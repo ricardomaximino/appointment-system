@@ -115,6 +115,46 @@ class MedpulseApplicationTests {
 	}
 
 	@Test
+	void testDoctorLunchBreakRestriction() {
+		// doc1 (Dr. House) works Monday: 09:00 - 13:00 and 14:00 - 17:00. Lunch break is 13:00 - 14:00.
+
+		// 1. Booking fully during lunch break (13:00 - 13:30) -> Should fail
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			MedpulseApplication.createSimpleAppointmentSlot(
+				LocalDateTime.of(2026, 6, 1, 13, 0), // Monday 13:00
+				"doc1",
+				AppointmentType.SHORT
+			);
+		}, "Booking Dr. House during lunch hour should fail shift check");
+
+		// 2. Booking crossing the start boundary (12:45 - 13:15) -> Should fail
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			MedpulseApplication.createSimpleAppointmentSlot(
+				LocalDateTime.of(2026, 6, 1, 12, 45), // Monday 12:45
+				"doc1",
+				AppointmentType.SHORT
+			);
+		}, "Booking Dr. House crossing lunch hour start should fail shift check");
+
+		// 3. Booking crossing the end boundary (13:45 - 14:15) -> Should fail
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			MedpulseApplication.createSimpleAppointmentSlot(
+				LocalDateTime.of(2026, 6, 1, 13, 45), // Monday 13:45
+				"doc1",
+				AppointmentType.SHORT
+			);
+		}, "Booking Dr. House crossing lunch hour end should fail shift check");
+
+		// 4. Booking inside afternoon shift (14:00 - 14:30) -> Should succeed
+		var slotAfternoon = MedpulseApplication.createSimpleAppointmentSlot(
+			LocalDateTime.of(2026, 6, 1, 14, 0), // Monday 14:00
+			"doc1",
+			AppointmentType.SHORT
+		);
+		Assertions.assertNotNull(slotAfternoon, "Booking Dr. House exactly at start of second shift should succeed");
+	}
+
+	@Test
 	void testConcurrentBookingRaceCondition() throws InterruptedException {
 		MedpulseApplication.clearBookings();
 

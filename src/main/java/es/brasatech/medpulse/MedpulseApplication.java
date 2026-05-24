@@ -23,7 +23,7 @@ public class MedpulseApplication {
 		String doctorId,
 		String name,
 		List<AppointmentType> appointmentTypes,
-		Map<DayOfWeek, TimeRange> weeklyAvailability
+		Map<DayOfWeek, List<TimeRange>> weeklyAvailability
 	) {}
 
 	public record Patient(String patientId, String name) {}
@@ -35,18 +35,18 @@ public class MedpulseApplication {
 	public static Set<LocalDate> companyClosedDates = new HashSet<>();
 
 	static {
-		// Initialize dummy doctors with availability schedules
+		// Initialize dummy doctors with availability schedules (split shifts / lunch breaks)
 		var houseAvailability = Map.of(
-			DayOfWeek.MONDAY, new TimeRange(LocalTime.of(9, 0), LocalTime.of(17, 0)),
-			DayOfWeek.WEDNESDAY, new TimeRange(LocalTime.of(9, 0), LocalTime.of(17, 0)),
-			DayOfWeek.FRIDAY, new TimeRange(LocalTime.of(9, 0), LocalTime.of(17, 0))
+			DayOfWeek.MONDAY, List.of(new TimeRange(LocalTime.of(9, 0), LocalTime.of(13, 0)), new TimeRange(LocalTime.of(14, 0), LocalTime.of(17, 0))),
+			DayOfWeek.WEDNESDAY, List.of(new TimeRange(LocalTime.of(9, 0), LocalTime.of(13, 0)), new TimeRange(LocalTime.of(14, 0), LocalTime.of(17, 0))),
+			DayOfWeek.FRIDAY, List.of(new TimeRange(LocalTime.of(9, 0), LocalTime.of(13, 0)), new TimeRange(LocalTime.of(14, 0), LocalTime.of(17, 0)))
 		);
 		var doc1 = new Doctor("doc1", "Dr. House", List.of(AppointmentType.SHORT, AppointmentType.MEDIUM), houseAvailability);
 
 		var greyAvailability = Map.of(
-			DayOfWeek.TUESDAY, new TimeRange(LocalTime.of(8, 0), LocalTime.of(16, 0)),
-			DayOfWeek.THURSDAY, new TimeRange(LocalTime.of(8, 0), LocalTime.of(16, 0)),
-			DayOfWeek.SATURDAY, new TimeRange(LocalTime.of(9, 0), LocalTime.of(12, 0))
+			DayOfWeek.TUESDAY, List.of(new TimeRange(LocalTime.of(8, 0), LocalTime.of(12, 0)), new TimeRange(LocalTime.of(13, 0), LocalTime.of(16, 0))),
+			DayOfWeek.THURSDAY, List.of(new TimeRange(LocalTime.of(8, 0), LocalTime.of(12, 0)), new TimeRange(LocalTime.of(13, 0), LocalTime.of(16, 0))),
+			DayOfWeek.SATURDAY, List.of(new TimeRange(LocalTime.of(9, 0), LocalTime.of(12, 0)))
 		);
 		var doc2 = new Doctor("doc2", "Dr. Grey", List.of(AppointmentType.MEDIUM, AppointmentType.LONG), greyAvailability);
 
@@ -88,15 +88,23 @@ public class MedpulseApplication {
 
 		// 2. Check doctor's weekly availability
 		DayOfWeek dayOfWeek = startDateTime.getDayOfWeek();
-		if (doctor.weeklyAvailability() == null || !doctor.weeklyAvailability().containsKey(dayOfWeek)) {
+		if (doctor.weeklyAvailability() == null || !doctor.weeklyAvailability().containsKey(dayOfWeek) || doctor.weeklyAvailability().get(dayOfWeek).isEmpty()) {
 			throw new IllegalStateException("Appointment cannot be scheduled: Doctor %s does not work on %s".formatted(doctor.name(), dayOfWeek));
 		}
 
-		// 3. Check doctor's working hours
-		TimeRange shift = doctor.weeklyAvailability().get(dayOfWeek);
-		if (!shift.contains(startTime, endTime)) {
-			throw new IllegalStateException("Appointment cannot be scheduled: Desired time %s - %s is outside Doctor %s's working hours %s - %s for %s".formatted(
-					startTime, endTime, doctor.name(), shift.start(), shift.end(), dayOfWeek));
+		// 3. Check doctor's working shifts (must fall fully within at least one working shift)
+		List<TimeRange> shifts = doctor.weeklyAvailability().get(dayOfWeek);
+		boolean fitsInShift = false;
+		for (TimeRange shift : shifts) {
+			if (shift.contains(startTime, endTime)) {
+				fitsInShift = true;
+				break;
+			}
+		}
+
+		if (!fitsInShift) {
+			throw new IllegalStateException("Appointment cannot be scheduled: Desired time %s - %s is outside Doctor %s's working shifts for %s".formatted(
+					startTime, endTime, doctor.name(), dayOfWeek));
 		}
 	}
 
