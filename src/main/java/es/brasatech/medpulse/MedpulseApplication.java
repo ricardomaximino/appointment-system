@@ -34,9 +34,9 @@ public class MedpulseApplication {
 	public record Patient(String patientId, String name) {}
 	public record AppointmentSlot(Doctor doctor, LocalDateTime dateTime, AppointmentType type) {}
 
-	public static HashMap<String, Doctor> doctors = new HashMap<String, Doctor>();
-	public static HashMap<String, Patient> patients = new HashMap<String, Patient>();
-	public static HashMap<AppointmentSlot, Patient> slots = new HashMap<AppointmentSlot, Patient>();
+	public static Map<String, Doctor> doctors = new HashMap<>();
+	public static Map<String, Patient> patients = new HashMap<>();
+	public static Map<AppointmentSlot, Patient> slots = new HashMap<>();
 	public static Set<LocalDate> companyClosedDates = new HashSet<>();
 
 	static {
@@ -72,17 +72,16 @@ public class MedpulseApplication {
 		patients.put(pat1.patientId(), pat1);
 		patients.put(pat2.patientId(), pat2);
 
-		// Default company closed date for testing: e.g. July 4th, 2026
-		companyClosedDates.add(LocalDate.of(2026, 7, 4));
+		// Default company closed date for testing: e.g. 15 days from now
+		companyClosedDates.add(LocalDate.now().plusDays(15));
 	}
+
+	static void main(String[] args) {}
 
 	public static void clearBookings() {
 		slots.clear();
 	}
 
-	public static void main(String[] args) {
-
-	}
 
 	public static void validateAppointmentSlotAvailability(AppointmentSlot slot) {
 		if (slot == null) {
@@ -167,7 +166,7 @@ public class MedpulseApplication {
 
 				// Overlap condition: startNew < endBooked AND startBooked < endNew
 				if (startNew.isBefore(endBooked) && startBooked.isBefore(endNew)) {
-					System.out.printf("Overlap detected! Doctor %s is already booked from %s to %s. Desired slot is %s to %s.\n",
+					System.out.printf("Overlap detected! Doctor %s is already booked from %s to %s. Desired slot is %s to %s.%n",
 							slot.doctor().name(), startBooked, endBooked, startNew, endNew);
 					return false;
 				}
