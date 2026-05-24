@@ -3,6 +3,7 @@ package es.brasatech.medpulse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.concurrent.Executors;
 import java.util.concurrent.CountDownLatch;
@@ -152,6 +153,59 @@ class MedpulseApplicationTests {
 			AppointmentType.SHORT
 		);
 		Assertions.assertNotNull(slotAfternoon, "Booking Dr. House exactly at start of second shift should succeed");
+	}
+
+	@Test
+	void testDoctorSpecificDatesAvailability() {
+		// doc3 (Dr. Strange) has specific dates availability:
+		// - 2 days from now: 08:30 - 12:00 and 17:00 - 18:00
+		// - 5 days from now: 11:00 - 17:00
+		
+		LocalDate date1 = LocalDate.now().plusDays(2);
+		LocalDate date2 = LocalDate.now().plusDays(5);
+
+		// 1. Booking on date1 during the first shift (09:00 - 09:30) -> Should succeed
+		var slot1 = MedpulseApplication.createSimpleAppointmentSlot(
+			date1.atTime(9, 0),
+			"doc3",
+			AppointmentType.SHORT
+		);
+		Assertions.assertNotNull(slot1);
+
+		// 2. Booking on date1 during the second shift (17:00 - 17:30) -> Should succeed
+		var slot2 = MedpulseApplication.createSimpleAppointmentSlot(
+			date1.atTime(17, 0),
+			"doc3",
+			AppointmentType.SHORT
+		);
+		Assertions.assertNotNull(slot2);
+
+		// 3. Booking on date1 outside shifts (13:00 - 13:30) -> Should fail
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			MedpulseApplication.createSimpleAppointmentSlot(
+				date1.atTime(13, 0),
+				"doc3",
+				AppointmentType.SHORT
+			);
+		}, "Booking Dr. Strange outside specific date shifts should fail");
+
+		// 4. Booking on date2 within shift (12:00 - 13:00) -> Should succeed
+		var slot3 = MedpulseApplication.createSimpleAppointmentSlot(
+			date2.atTime(12, 0),
+			"doc3",
+			AppointmentType.MEDIUM
+		);
+		Assertions.assertNotNull(slot3);
+
+		// 5. Booking on a completely unconfigured date (e.g. 3 days from now) -> Should fail
+		LocalDate unconfiguredDate = LocalDate.now().plusDays(3);
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			MedpulseApplication.createSimpleAppointmentSlot(
+				unconfiguredDate.atTime(10, 0),
+				"doc3",
+				AppointmentType.SHORT
+			);
+		}, "Booking Dr. Strange on an unconfigured day should fail");
 	}
 
 	@Test

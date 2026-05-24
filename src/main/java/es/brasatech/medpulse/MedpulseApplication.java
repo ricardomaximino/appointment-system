@@ -23,8 +23,13 @@ public class MedpulseApplication {
 		String doctorId,
 		String name,
 		List<AppointmentType> appointmentTypes,
-		Map<DayOfWeek, List<TimeRange>> weeklyAvailability
-	) {}
+		Map<DayOfWeek, List<TimeRange>> weeklyAvailability,
+		Map<LocalDate, List<TimeRange>> specificDatesAvailability
+	) {
+		public Doctor(String doctorId, String name, List<AppointmentType> appointmentTypes, Map<DayOfWeek, List<TimeRange>> weeklyAvailability) {
+			this(doctorId, name, appointmentTypes, weeklyAvailability, Map.of());
+		}
+	}
 
 	public record Patient(String patientId, String name) {}
 	public record AppointmentSlot(Doctor doctor, LocalDateTime dateTime, AppointmentType type) {}
@@ -50,8 +55,16 @@ public class MedpulseApplication {
 		);
 		var doc2 = new Doctor("doc2", "Dr. Grey", List.of(AppointmentType.MEDIUM, AppointmentType.LONG), greyAvailability);
 
+		// Seed doc3 (Dr. Strange) with specific date availabilities using dynamic relative dates
+		var strangeAvailability = Map.of(
+			LocalDate.now().plusDays(2), List.of(new TimeRange(LocalTime.of(8, 30), LocalTime.of(12, 0)), new TimeRange(LocalTime.of(17, 0), LocalTime.of(18, 0))),
+			LocalDate.now().plusDays(5), List.of(new TimeRange(LocalTime.of(11, 0), LocalTime.of(17, 0)))
+		);
+		var doc3 = new Doctor("doc3", "Dr. Strange", List.of(AppointmentType.SHORT, AppointmentType.MEDIUM, AppointmentType.LONG), Map.of(), strangeAvailability);
+
 		doctors.put(doc1.doctorId(), doc1);
 		doctors.put(doc2.doctorId(), doc2);
+		doctors.put(doc3.doctorId(), doc3);
 
 		// Initialize dummy patients
 		var pat1 = new Patient("pat1", "John Doe");
@@ -86,14 +99,22 @@ public class MedpulseApplication {
 			throw new IllegalStateException("Appointment cannot be scheduled: Company is closed on " + appointmentDate);
 		}
 
-		// 2. Check doctor's weekly availability
-		DayOfWeek dayOfWeek = startDateTime.getDayOfWeek();
-		if (doctor.weeklyAvailability() == null || !doctor.weeklyAvailability().containsKey(dayOfWeek) || doctor.weeklyAvailability().get(dayOfWeek).isEmpty()) {
-			throw new IllegalStateException("Appointment cannot be scheduled: Doctor %s does not work on %s".formatted(doctor.name(), dayOfWeek));
+		// 2. Resolve active shifts for the day (prioritize specific dates over weekly recurring schedules)
+		List<TimeRange> shifts = null;
+		if (doctor.specificDatesAvailability() != null && doctor.specificDatesAvailability().containsKey(appointmentDate)) {
+			shifts = doctor.specificDatesAvailability().get(appointmentDate);
+		} else {
+			DayOfWeek dayOfWeek = startDateTime.getDayOfWeek();
+			if (doctor.weeklyAvailability() != null && doctor.weeklyAvailability().containsKey(dayOfWeek)) {
+				shifts = doctor.weeklyAvailability().get(dayOfWeek);
+			}
+		}
+
+		if (shifts == null || shifts.isEmpty()) {
+			throw new IllegalStateException("Appointment cannot be scheduled: Doctor %s does not work on %s".formatted(doctor.name(), appointmentDate));
 		}
 
 		// 3. Check doctor's working shifts (must fall fully within at least one working shift)
-		List<TimeRange> shifts = doctor.weeklyAvailability().get(dayOfWeek);
 		boolean fitsInShift = false;
 		for (TimeRange shift : shifts) {
 			if (shift.contains(startTime, endTime)) {
@@ -104,7 +125,7 @@ public class MedpulseApplication {
 
 		if (!fitsInShift) {
 			throw new IllegalStateException("Appointment cannot be scheduled: Desired time %s - %s is outside Doctor %s's working shifts for %s".formatted(
-					startTime, endTime, doctor.name(), dayOfWeek));
+					startTime, endTime, doctor.name(), appointmentDate));
 		}
 	}
 
