@@ -182,6 +182,9 @@
 							<goal>compile</goal>
 						</goals>
 						<configuration>
+							<compilerArgs>
+								<arg>--enable-preview</arg>
+							</compilerArgs>
 							<annotationProcessorPaths>
 								<path>
 									<groupId>org.projectlombok</groupId>
@@ -206,6 +209,11 @@
 						</configuration>
 					</execution>
 				</executions>
+				<configuration>
+					<source>25</source>
+					<target>25</target>
+					<compilerArgs>--enable-preview</compilerArgs>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
