@@ -1,26 +1,55 @@
 package es.brasatech.medpulse;
 
-//import org.springframework.boot.SpringApplication;
-//import org.springframework.boot.autoconfigure.SpringBootApplication;
-
+import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class MedpulseApplication {
 
-	public record Doctor(String doctorId, String name, List<AppointmentType> appointmentTypes) {}
+	public record TimeRange(LocalTime start, LocalTime end) {
+		public boolean contains(LocalTime tStart, LocalTime tEnd) {
+			return !tStart.isBefore(start) && !tEnd.isAfter(end);
+		}
+	}
+
+	public record Doctor(
+		String doctorId,
+		String name,
+		List<AppointmentType> appointmentTypes,
+		Map<DayOfWeek, TimeRange> weeklyAvailability
+	) {}
+
 	public record Patient(String patientId, String name) {}
 	public record AppointmentSlot(Doctor doctor, LocalDateTime dateTime, AppointmentType type) {}
+
 	public static HashMap<String, Doctor> doctors = new HashMap<String, Doctor>();
 	public static HashMap<String, Patient> patients = new HashMap<String, Patient>();
 	public static HashMap<AppointmentSlot, Patient> slots = new HashMap<AppointmentSlot, Patient>();
+	public static Set<LocalDate> companyClosedDates = new HashSet<>();
 
 	static {
-		// Initialize dummy doctors
-		var doc1 = new Doctor("doc1", "Dr. House", List.of(AppointmentType.SHORT, AppointmentType.MEDIUM));
-		var doc2 = new Doctor("doc2", "Dr. Grey", List.of(AppointmentType.MEDIUM, AppointmentType.LONG));
+		// Initialize dummy doctors with availability schedules
+		var houseAvailability = Map.of(
+			DayOfWeek.MONDAY, new TimeRange(LocalTime.of(9, 0), LocalTime.of(17, 0)),
+			DayOfWeek.WEDNESDAY, new TimeRange(LocalTime.of(9, 0), LocalTime.of(17, 0)),
+			DayOfWeek.FRIDAY, new TimeRange(LocalTime.of(9, 0), LocalTime.of(17, 0))
+		);
+		var doc1 = new Doctor("doc1", "Dr. House", List.of(AppointmentType.SHORT, AppointmentType.MEDIUM), houseAvailability);
+
+		var greyAvailability = Map.of(
+			DayOfWeek.TUESDAY, new TimeRange(LocalTime.of(8, 0), LocalTime.of(16, 0)),
+			DayOfWeek.THURSDAY, new TimeRange(LocalTime.of(8, 0), LocalTime.of(16, 0)),
+			DayOfWeek.SATURDAY, new TimeRange(LocalTime.of(9, 0), LocalTime.of(12, 0))
+		);
+		var doc2 = new Doctor("doc2", "Dr. Grey", List.of(AppointmentType.MEDIUM, AppointmentType.LONG), greyAvailability);
+
 		doctors.put(doc1.doctorId(), doc1);
 		doctors.put(doc2.doctorId(), doc2);
 
@@ -29,19 +58,46 @@ public class MedpulseApplication {
 		var pat2 = new Patient("pat2", "Jane Smith");
 		patients.put(pat1.patientId(), pat1);
 		patients.put(pat2.patientId(), pat2);
+
+		// Default company closed date for testing: e.g. July 4th, 2026
+		companyClosedDates.add(LocalDate.of(2026, 7, 4));
 	}
 
 	public static void clearBookings() {
 		slots.clear();
 	}
 
-//	public static void main(String[] args) {
-//		SpringApplication.run(MedpulseApplication.class, args);
-//	}
-
-
 	public static void main(String[] args) {
 
+	}
+
+	public static void validateAppointmentSlotAvailability(AppointmentSlot slot) {
+		if (slot == null) {
+			throw new IllegalArgumentException("Slot cannot be null");
+		}
+		Doctor doctor = slot.doctor();
+		LocalDateTime startDateTime = slot.dateTime();
+		LocalDate appointmentDate = startDateTime.toLocalDate();
+		LocalTime startTime = startDateTime.toLocalTime();
+		LocalTime endTime = startTime.plus(slot.type().getDuration());
+
+		// 1. Check if the company is closed
+		if (companyClosedDates.contains(appointmentDate)) {
+			throw new IllegalStateException("Appointment cannot be scheduled: Company is closed on " + appointmentDate);
+		}
+
+		// 2. Check doctor's weekly availability
+		DayOfWeek dayOfWeek = startDateTime.getDayOfWeek();
+		if (doctor.weeklyAvailability() == null || !doctor.weeklyAvailability().containsKey(dayOfWeek)) {
+			throw new IllegalStateException("Appointment cannot be scheduled: Doctor %s does not work on %s".formatted(doctor.name(), dayOfWeek));
+		}
+
+		// 3. Check doctor's working hours
+		TimeRange shift = doctor.weeklyAvailability().get(dayOfWeek);
+		if (!shift.contains(startTime, endTime)) {
+			throw new IllegalStateException("Appointment cannot be scheduled: Desired time %s - %s is outside Doctor %s's working hours %s - %s for %s".formatted(
+					startTime, endTime, doctor.name(), shift.start(), shift.end(), dayOfWeek));
+		}
 	}
 
 	public static AppointmentSlot createSimpleAppointmentSlot(LocalDateTime appointmentDateTime, String doctorId, AppointmentType appointmentType) {
@@ -52,11 +108,21 @@ public class MedpulseApplication {
 		if (!doctor.appointmentTypes.contains(appointmentType)) {
 			System.out.printf("Doctor %s does not have permissions to be assigned for appointment type %s\n", doctor.name(), appointmentType);
 		}
-		return new AppointmentSlot(doctor, appointmentDateTime, appointmentType);
+		var slot = new AppointmentSlot(doctor, appointmentDateTime, appointmentType);
+		validateAppointmentSlotAvailability(slot);
+		return slot;
 	}
 
 	public static boolean registerSimpleAppointmentSlot(AppointmentSlot slot, Patient patient) {
 		if (slot == null || patient == null) {
+			return false;
+		}
+
+		// Validate availability rules
+		try {
+			validateAppointmentSlotAvailability(slot);
+		} catch (IllegalStateException e) {
+			System.out.println("Registration failed: " + e.getMessage());
 			return false;
 		}
 

@@ -16,6 +16,7 @@ class MedpulseApplicationTests {
 
 		var doctorId = "doc1";
 		var patient = MedpulseApplication.patients.get("pat1");
+		// 2026-06-01 is Monday (Dr. House works 09:00 - 17:00)
 		var dateTime = LocalDateTime.of(2026, 6, 1, 10, 0);
 		var type = AppointmentType.SHORT; // 30 minutes duration
 
@@ -36,29 +37,81 @@ class MedpulseApplicationTests {
 		var pat1 = MedpulseApplication.patients.get("pat1");
 		var pat2 = MedpulseApplication.patients.get("pat2");
 
-		// Book doc1: 10:00 to 10:30 (SHORT)
+		// Book doc1 on Monday (works M, W, F): 10:00 to 10:30 (SHORT)
 		var slot1 = MedpulseApplication.createSimpleAppointmentSlot(LocalDateTime.of(2026, 6, 1, 10, 0), doc1, AppointmentType.SHORT);
 		Assertions.assertTrue(MedpulseApplication.registerSimpleAppointmentSlot(slot1, pat1));
 
 		// 1. Same doctor, exact same slot -> Fail
-		var slotDuplicate = MedpulseApplication.createSimpleAppointmentSlot(LocalDateTime.of(2026, 6, 1, 10, 0), doc1, AppointmentType.SHORT);
+		// Since we try to create an already overlapping slot, we must be careful:
+		// createSimpleAppointmentSlot doesn't check overlaps (only registerSimpleAppointmentSlot checks overlaps),
+		// but createSimpleAppointmentSlot DOES check doctor schedule & company closed dates.
+		// So creating it is allowed, but registering it must fail!
+		var slotDuplicate = new MedpulseApplication.AppointmentSlot(MedpulseApplication.doctors.get(doc1), LocalDateTime.of(2026, 6, 1, 10, 0), AppointmentType.SHORT);
 		Assertions.assertFalse(MedpulseApplication.registerSimpleAppointmentSlot(slotDuplicate, pat2), "Duplicate booking should fail");
 
 		// 2. Same doctor, overlapping slot starting inside the existing one -> Fail (10:15 to 10:45)
-		var slotOverlappingStart = MedpulseApplication.createSimpleAppointmentSlot(LocalDateTime.of(2026, 6, 1, 10, 15), doc1, AppointmentType.SHORT);
+		var slotOverlappingStart = new MedpulseApplication.AppointmentSlot(MedpulseApplication.doctors.get(doc1), LocalDateTime.of(2026, 6, 1, 10, 15), AppointmentType.SHORT);
 		Assertions.assertFalse(MedpulseApplication.registerSimpleAppointmentSlot(slotOverlappingStart, pat2), "Overlapping booking (start inside) should fail");
 
 		// 3. Same doctor, overlapping slot wrapping the existing one -> Fail (09:45 to 11:15)
-		var slotOverlappingWrap = MedpulseApplication.createSimpleAppointmentSlot(LocalDateTime.of(2026, 6, 1, 9, 45), doc1, AppointmentType.LONG);
+		var slotOverlappingWrap = new MedpulseApplication.AppointmentSlot(MedpulseApplication.doctors.get(doc1), LocalDateTime.of(2026, 6, 1, 9, 45), AppointmentType.MEDIUM);
 		Assertions.assertFalse(MedpulseApplication.registerSimpleAppointmentSlot(slotOverlappingWrap, pat2), "Overlapping booking (wrapping existing) should fail");
 
 		// 4. Same doctor, adjacent slot -> Succeed (10:30 to 11:00)
 		var slotAdjacent = MedpulseApplication.createSimpleAppointmentSlot(LocalDateTime.of(2026, 6, 1, 10, 30), doc1, AppointmentType.SHORT);
 		Assertions.assertTrue(MedpulseApplication.registerSimpleAppointmentSlot(slotAdjacent, pat2), "Adjacent non-overlapping booking should succeed");
 
-		// 5. Different doctor, same slot -> Succeed
-		var slotDifferentDoctor = MedpulseApplication.createSimpleAppointmentSlot(LocalDateTime.of(2026, 6, 1, 10, 0), doc2, AppointmentType.SHORT);
-		Assertions.assertTrue(MedpulseApplication.registerSimpleAppointmentSlot(slotDifferentDoctor, pat2), "Booking different doctor for same slot should succeed");
+		// 5. Different doctor, valid slot on a day they work (doc2 works Tuesday 2026-06-02) -> Succeed
+		var slotDifferentDoctor = MedpulseApplication.createSimpleAppointmentSlot(LocalDateTime.of(2026, 6, 2, 10, 0), doc2, AppointmentType.MEDIUM);
+		Assertions.assertTrue(MedpulseApplication.registerSimpleAppointmentSlot(slotDifferentDoctor, pat2), "Booking different doctor for valid slot should succeed");
+	}
+
+	@Test
+	void testDoctorWorkingDaysRestriction() {
+		// doc1 (Dr. House) works M, W, F. Let's try to book him on a Tuesday (2026-06-02)
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			MedpulseApplication.createSimpleAppointmentSlot(
+				LocalDateTime.of(2026, 6, 2, 10, 0), // Tuesday
+				"doc1", 
+				AppointmentType.SHORT
+			);
+		}, "Booking Dr. House on Tuesday should fail weekly availability check");
+	}
+
+	@Test
+	void testDoctorWorkingHoursRestriction() {
+		// doc1 (Dr. House) works 09:00 - 17:00.
+		
+		// 1. Try to book too early (08:30)
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			MedpulseApplication.createSimpleAppointmentSlot(
+				LocalDateTime.of(2026, 6, 1, 8, 30), // Monday
+				"doc1", 
+				AppointmentType.SHORT
+			);
+		}, "Booking Dr. House at 08:30 should fail working hours check");
+
+		// 2. Try to book too late (16:45) with a MEDIUM appointment (60 mins, ends at 17:45)
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			MedpulseApplication.createSimpleAppointmentSlot(
+				LocalDateTime.of(2026, 6, 1, 16, 45), // Monday
+				"doc1", 
+				AppointmentType.MEDIUM
+			);
+		}, "Booking Dr. House ending past 17:00 should fail working hours check");
+	}
+
+	@Test
+	void testCompanyClosedDatesRestriction() {
+		// July 4th, 2026 is registered as closed in the static block. Let's try to schedule then
+		// Note: July 4th, 2026 is a Saturday, so let's check doc2 who works Saturdays
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			MedpulseApplication.createSimpleAppointmentSlot(
+				LocalDateTime.of(2026, 7, 4, 10, 0), // Closed holiday
+				"doc2", 
+				AppointmentType.MEDIUM
+			);
+		}, "Booking on a company closed date should fail");
 	}
 
 	@Test
@@ -66,6 +119,7 @@ class MedpulseApplicationTests {
 		MedpulseApplication.clearBookings();
 
 		var doctorId = "doc1";
+		// Monday, June 1st. doc1 works!
 		var dateTime = LocalDateTime.of(2026, 6, 1, 14, 0);
 		var type = AppointmentType.SHORT;
 		var slot = MedpulseApplication.createSimpleAppointmentSlot(dateTime, doctorId, type);
