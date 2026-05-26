@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -274,5 +275,59 @@ class SimpleAppointmentServiceTest {
         // In our naive thread-unsafe system, we expect successCount to be > 1 due to the race condition!
         Assertions.assertTrue(successCount.get() > 1,
                 "Race condition did not occur! (Success count was " + successCount.get() + ")");
+    }
+
+    @Test
+    void testAvailableSlotsDayFiltering() {
+        appointmentService.clearBookings();
+
+        var doctorId = "doc1"; // Dr. House: Mon, Wed, Fri 09:00-13:00, 14:00-17:00
+        LocalDate nextMonday = getNextDayOfWeek(DayOfWeek.MONDAY);
+
+        // Before any booking, retrieve available slots
+        var availableSlotsBefore = appointmentService.getAvailableSlots(doctorId, nextMonday);
+        Assertions.assertFalse(availableSlotsBefore.isEmpty(), "There should be available slots on working day");
+
+        // Verify no slots are in lunch hour (13:00 - 14:00)
+        boolean hasLunchHourSlot = availableSlotsBefore.stream()
+                .anyMatch(dt -> dt.toLocalTime().equals(LocalTime.of(13, 0)) ||
+                        dt.toLocalTime().equals(LocalTime.of(13, 30)));
+        Assertions.assertFalse(hasLunchHourSlot, "No slot should be available during lunch break");
+
+        // Register one booking: 10:00 - 11:00 (MEDIUM)
+        var patient = appointmentService.patients.get("pat1");
+        var slotToBook = appointmentService.createSimpleAppointmentSlot(nextMonday.atTime(10, 0), doctorId, AppointmentType.MEDIUM);
+        Assertions.assertTrue(appointmentService.registerSimpleAppointmentSlot(slotToBook, patient));
+
+        // Retrieve available slots again
+        var availableSlotsAfter = appointmentService.getAvailableSlots(doctorId, nextMonday);
+
+        // Verify the booked starting points (10:00 and 10:30) fall inside [10:00, 11:00) and are excluded
+        Assertions.assertFalse(availableSlotsAfter.contains(nextMonday.atTime(10, 0)), "10:00 start time should be excluded");
+        Assertions.assertFalse(availableSlotsAfter.contains(nextMonday.atTime(10, 30)), "10:30 start time should be excluded");
+        
+        // Verify surrounding slots are free
+        Assertions.assertTrue(availableSlotsAfter.contains(nextMonday.atTime(9, 30)), "09:30 should be available");
+        Assertions.assertTrue(availableSlotsAfter.contains(nextMonday.atTime(11, 0)), "11:00 should be available");
+    }
+
+    @Test
+    void testAvailableSlotsWeekAndMonthFiltering() {
+        appointmentService.clearBookings();
+
+        var doctorId = "doc1"; // Dr. House: Mon, Wed, Fri
+        LocalDate nextMonday = getNextDayOfWeek(DayOfWeek.MONDAY);
+
+        // Week test
+        var weeklySlots = appointmentService.getAvailableSlotsForWeek(doctorId, nextMonday);
+        Assertions.assertFalse(weeklySlots.isEmpty(), "Weekly slots should not be empty");
+
+        // Month test
+        var monthlySlots = appointmentService.getAvailableSlotsForMonth(doctorId, nextMonday.getYear(), nextMonday.getMonthValue());
+        Assertions.assertFalse(monthlySlots.isEmpty(), "Monthly slots should not be empty");
+
+        // Year test
+        var yearlySlots = appointmentService.getAvailableSlotsForYear(doctorId, nextMonday.getYear());
+        Assertions.assertFalse(yearlySlots.isEmpty(), "Yearly slots should not be empty");
     }
 }

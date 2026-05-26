@@ -113,4 +113,106 @@ public class SimpleAppointmentService implements AppointmentService {
         System.out.println("Appointment slot [doctor: %s, start: %s, end: %s ] was registered successfully!".formatted(slot.doctor().name(), startNew, endNew));
         return true;
     }
+
+    @Override
+    public List<LocalDateTime> getAvailableSlots(String doctorId, LocalDate date) {
+        var doctor = doctors.get(doctorId);
+        if (doctor == null) {
+            throw new IllegalArgumentException("Doctor not found: " + doctorId);
+        }
+
+        // 1. Check if company is closed
+        if (companyClosedDates.contains(date)) {
+            return List.of();
+        }
+
+        // 2. Resolve active shifts for the day (prioritize specific dates over weekly recurring schedules)
+        List<TimeRange> shifts = null;
+        if (doctor.specificDatesAvailability() != null && doctor.specificDatesAvailability().containsKey(date)) {
+            shifts = doctor.specificDatesAvailability().get(date);
+        } else {
+            DayOfWeek dayOfWeek = date.getDayOfWeek();
+            if (doctor.weeklyAvailability() != null && doctor.weeklyAvailability().containsKey(dayOfWeek)) {
+                shifts = doctor.weeklyAvailability().get(dayOfWeek);
+            }
+        }
+
+        if (shifts == null || shifts.isEmpty()) {
+            return List.of();
+        }
+
+        List<LocalDateTime> availableSlots = new ArrayList<>();
+
+        // Resolve step size based on the doctor's allowed appointment types with the smallest duration value
+        long stepMinutes = doctor.appointmentTypes().stream()
+                .mapToLong(t -> t.getDuration().toMinutes())
+                .min()
+                .orElse(30); // fallback to 30 minutes if none configured
+
+        // 3. For each active shift, generate potential starting times at dynamically resolved intervals
+        for (TimeRange shift : shifts) {
+            LocalTime time = shift.start();
+            while (time.isBefore(shift.end())) {
+                LocalDateTime candidateStart = date.atTime(time);
+                
+                // Check if it overlaps with any already registered slots
+                boolean isBooked = false;
+                for (var entry : slots.entrySet()) {
+                    var bookedSlot = entry.getKey();
+                    if (bookedSlot.doctor().doctorId().equals(doctorId)) {
+                        LocalDateTime startBooked = bookedSlot.dateTime();
+                        LocalDateTime endBooked = startBooked.plus(bookedSlot.type().getDuration());
+
+                        if (!candidateStart.isBefore(startBooked) && candidateStart.isBefore(endBooked)) {
+                            isBooked = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!isBooked) {
+                    availableSlots.add(candidateStart);
+                }
+                
+                // Advance by step size
+                time = time.plusMinutes(stepMinutes);
+            }
+        }
+
+        CalendarConsolePrinter.printDayCalendar(doctor, date, availableSlots, slots.keySet());
+        return availableSlots;
+    }
+
+    @Override
+    public List<LocalDateTime> getAvailableSlotsForWeek(String doctorId, LocalDate date) {
+        LocalDate startOfWeek = date.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        List<LocalDateTime> weeklySlots = new ArrayList<>();
+        for (int i = 0; i < 7; i++) {
+            weeklySlots.addAll(getAvailableSlots(doctorId, startOfWeek.plusDays(i)));
+        }
+        CalendarConsolePrinter.printWeekCalendar(doctors.get(doctorId), date, weeklySlots);
+        return weeklySlots;
+    }
+
+    @Override
+    public List<LocalDateTime> getAvailableSlotsForMonth(String doctorId, int year, int month) {
+        LocalDate firstDayOfMonth = LocalDate.of(year, month, 1);
+        int lengthOfMonth = firstDayOfMonth.lengthOfMonth();
+        List<LocalDateTime> monthlySlots = new ArrayList<>();
+        for (int day = 1; day <= lengthOfMonth; day++) {
+            monthlySlots.addAll(getAvailableSlots(doctorId, LocalDate.of(year, month, day)));
+        }
+        CalendarConsolePrinter.printMonthCalendar(doctors.get(doctorId), year, month, monthlySlots);
+        return monthlySlots;
+    }
+
+    @Override
+    public List<LocalDateTime> getAvailableSlotsForYear(String doctorId, int year) {
+        List<LocalDateTime> yearlySlots = new ArrayList<>();
+        for (int month = 1; month <= 12; month++) {
+            yearlySlots.addAll(getAvailableSlotsForMonth(doctorId, year, month));
+        }
+        CalendarConsolePrinter.printYearCalendar(doctors.get(doctorId), year, yearlySlots);
+        return yearlySlots;
+    }
 }
