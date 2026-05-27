@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedPulse - Visual Calendar</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <!-- Custom Sleek Styling -->
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --primary-gradient: linear-gradient(135deg, #0d6efd, #0dcaf0);
+            --personal-gradient: linear-gradient(135deg, #6f42c1, #a984ec);
+            --professional-gradient: linear-gradient(135deg, #0d6efd, #0dcaf0);
+            --bg-soft: #f8f9fc;
+            --card-shadow: 0 10px 30px rgba(13, 110, 253, 0.04), 0 1px 8px rgba(0, 0, 0, 0.02);
+            --font-family-sans-serif: 'Plus Jakarta Sans', sans-serif;
+            --font-family-title: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-soft);
+            font-family: var(--font-family-sans-serif);
+            color: #2b303a;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-family-title);
+            font-weight: 600;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.8) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-brand {
+            font-family: var(--font-family-title);
+            font-weight: 700;
+            font-size: 1.5rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-link {
+            font-weight: 500;
+            color: #4a5568 !important;
+            transition: color 0.2s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-color) !important;
+        }
+
+        .user-welcome-bar {
+            background: white;
+            border-radius: 16px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(0, 0, 0, 0.02);
+        }
+
+        .view-toggle-card {
+            background: white;
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            margin-bottom: 2.5rem;
+        }
+
+        .btn-toggle-view {
+            border-radius: 12px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .timeline-card {
+            background: white;
+            border-radius: 24px;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            padding: 2rem;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2.5rem;
+        }
+
+        .event-item {
+            position: relative;
+            padding-left: 2.5rem;
+            padding-bottom: 2rem;
+            border-left: 2px dashed #edf2f7;
+            transition: transform 0.2s ease;
+        }
+
+        .event-item:last-child {
+            border-left: none;
+            padding-bottom: 0;
+        }
+
+        .event-item:hover {
+            transform: translateX(4px);
+        }
+
+        .event-marker {
+            position: absolute;
+            left: -11px;
+            top: 2px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            border: 4px solid var(--primary-color);
+            z-index: 2;
+        }
+
+        .marker-personal {
+            border-color: #6f42c1;
+        }
+
+        .marker-professional {
+            border-color: #0d6efd;
+        }
+
+        .event-box {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            border: 1px solid rgba(0, 0, 0, 0.02);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .event-box:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.03);
+        }
+
+        .event-box-personal {
+            border-left: 5px solid #6f42c1;
+            background: linear-gradient(to right, rgba(111, 66, 193, 0.02), transparent);
+        }
+
+        .event-box-professional {
+            border-left: 5px solid #0d6efd;
+            background: linear-gradient(to right, rgba(13, 110, 253, 0.02), transparent);
+        }
+
+        .badge-type {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border-radius: 8px;
+            padding: 0.35rem 0.6rem;
+        }
+
+        .badge-personal {
+            background-color: rgba(111, 66, 193, 0.1);
+            color: #6f42c1;
+        }
+
+        .badge-professional {
+            background-color: rgba(13, 110, 253, 0.1);
+            color: #0d6efd;
+        }
+
+        .admin-section {
+            background: linear-gradient(to right, rgba(13, 110, 253, 0.03), rgba(13, 202, 240, 0.03));
+            border-radius: 24px;
+            padding: 2.5rem;
+            border: 1px solid rgba(13, 110, 253, 0.06);
+            margin-bottom: 2.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg sticky-top navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fa-solid fa-heart-pulse me-2"></i>MedPulse
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="fa-solid fa-chart-line me-1"></i>Dashboard</a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/doctors"><i class="fa-solid fa-user-doctor me-1"></i>Doctors</a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/patients"><i class="fa-solid fa-users me-1"></i>Patients</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/book"><i class="fa-solid fa-calendar-plus me-1"></i>Book Appointment</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/appointments"><i class="fa-solid fa-calendar-check me-1"></i>Appointments</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/calendar"><i class="fa-solid fa-calendar-days me-1"></i>Calendar</a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/closed-dates"><i class="fa-solid fa-building-circle-xmark me-1"></i>Closed Dates</a>
+                    </li>
+                    <!-- Auth items -->
+                    <li class="nav-item ms-lg-3 py-2 py-lg-0 border-lg-start ps-lg-3">
+                        <div class="d-flex align-items-center">
+                            <span class="text-muted small me-2"><i class="fa-solid fa-circle-user me-1 text-primary"></i>Logged in as <strong th:text="${currentUserId}">user</strong></span>
+                            <form th:action="@{/logout}" method="post" class="d-inline m-0">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius: 8px;"><i class="fa-solid fa-sign-out-alt"></i></button>
+                            </form>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+
+        <!-- Success Alert -->
+        <div th:if="${successMessage}" class="alert alert-success d-flex align-items-center mb-4 border-0 shadow-sm" role="alert" style="border-radius:12px;">
+            <i class="fa-solid fa-circle-check me-3 fs-4"></i>
+            <div th:text="${successMessage}">Success message goes here</div>
+        </div>
+
+        <!-- Error Alert -->
+        <div th:if="${errorMessage}" class="alert alert-danger d-flex align-items-center mb-4 border-0 shadow-sm" role="alert" style="border-radius:12px;">
+            <i class="fa-solid fa-triangle-exclamation me-3 fs-4"></i>
+            <div th:text="${errorMessage}">Error message goes here</div>
+        </div>
+
+        <!-- Welcome Banner -->
+        <div class="user-welcome-bar d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h4 class="mb-1 text-primary" style="font-weight: 700;">My MedPulse Schedule</h4>
+                <p class="text-muted mb-0 small">Displaying combined scheduling systems for <span class="badge bg-secondary" th:text="${currentUserId}">doc1</span></p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/calendar?viewMode=merged" th:class="${viewMode == 'merged' ? 'btn btn-primary btn-toggle-view' : 'btn btn-outline-primary btn-toggle-view'}">
+                    <i class="fa-solid fa-compress me-1"></i>Merged View
+                </a>
+                <a href="/calendar?viewMode=split" th:class="${viewMode == 'split' ? 'btn btn-primary btn-toggle-view' : 'btn btn-outline-primary btn-toggle-view'}">
+                    <i class="fa-solid fa-columns me-1"></i>Side-by-Side View
+                </a>
+            </div>
+        </div>
+
+        <!-- Merged Calendar View -->
+        <div th:if="${viewMode == 'merged'}" class="row">
+            <div class="col-12">
+                <div class="timeline-card">
+                    <h5 class="mb-4 text-secondary" style="font-weight: 700;"><i class="fa-solid fa-calendar-days me-2"></i>Merged Timeline Schedule</h5>
+                    <div class="timeline-container" th:if="${not #lists.isEmpty(mergedEvents)}">
+                        <div class="event-item animate__animated animate__fadeIn" th:each="evt : ${mergedEvents}">
+                            <div th:class="${evt.type == 'PERSONAL' ? 'event-marker marker-personal' : 'event-marker marker-professional'}"></div>
+                            <div th:class="${evt.type == 'PERSONAL' ? 'event-box event-box-personal' : 'event-box event-box-professional'}">
+                                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span th:class="${evt.type == 'PERSONAL' ? 'badge badge-type badge-personal' : 'badge badge-type badge-professional'}" th:text="${evt.type}">PERSONAL</span>
+                                        
+                                        <!-- Delete Button for Owner's Personal Events in Merged View -->
+                                        <div th:if="${evt.type == 'PERSONAL'}">
+                                            <form th:action="@{/personal-events/delete/{id}(id=${evt.id})}" method="POST" class="d-inline m-0" onsubmit="return confirm('Are you sure you want to delete this personal event?');">
+                                                <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0" title="Delete Personal Event" style="line-height: 1;">
+                                                    <i class="fa-regular fa-trash-can text-danger"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    <span class="text-muted small fw-semibold"><i class="fa-regular fa-clock me-1"></i>
+                                        <span th:text="${#temporals.format(evt.startDateTime, 'yyyy-MM-dd HH:mm')}">2026-06-01 10:00</span>
+                                        &rarr; 
+                                        <span th:text="${#temporals.format(evt.endDateTime, 'HH:mm')}">11:00</span>
+                                    </span>
+                                </div>
+                                <h5 class="mb-2" style="font-weight: 600;" th:text="${evt.title}">Consultation</h5>
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted small mt-3 border-top pt-2" style="font-size: 0.85rem;">
+                                    <div>
+                                        <span th:if="${evt.type == 'PROFESSIONAL'}">
+                                            <i class="fa-solid fa-user-doctor me-1"></i>Doctor: <strong th:text="${evt.doctorName}">House</strong> |
+                                            <i class="fa-solid fa-user me-1"></i>Patient: <strong th:text="${evt.patientName}">John Doe</strong>
+                                        </span>
+                                        <span th:if="${evt.type == 'PERSONAL'}">
+                                            <i class="fa-solid fa-lock me-1"></i>Private Personal Commitment
+                                        </span>
+                                    </div>
+                                    <div th:if="${evt.status != null}">
+                                        <span th:if="${evt.status == 'ACTIVE'}" class="badge bg-success" style="border-radius: 6px;">Active</span>
+                                        <span th:if="${evt.status == 'CANCEL'}" class="badge bg-secondary" style="border-radius: 6px;">Cancelled</span>
+                                        <span th:if="${evt.status == 'PENDING_ACCEPTANCE'}" class="badge bg-warning text-dark" style="border-radius: 6px;">Pending</span>
+                                        <span th:if="${evt.statusNotes != null && !evt.statusNotes.isEmpty()}" class="ms-2 font-monospace text-secondary" style="font-size: 0.75rem;" th:text="${'(' + evt.statusNotes + ')'}">notes</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Empty State -->
+                    <div class="text-center py-5 text-muted" th:if="${#lists.isEmpty(mergedEvents)}">
+                        <i class="fa-regular fa-calendar-xmark fs-1 mb-3 text-secondary" style="opacity: 0.3;"></i>
+                        <p class="mb-0">No active schedule items found in your calendar.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Side-by-Side Calendar View -->
+        <div th:if="${viewMode == 'split'}" class="row g-4">
+            <!-- Left Column: Personal Calendar -->
+            <div class="col-lg-6">
+                <div class="timeline-card h-100">
+                    <h5 class="mb-4 text-purple" style="color: #6f42c1; font-weight: 700;"><i class="fa-solid fa-lock me-2"></i>Personal Calendar</h5>
+                    <div class="timeline-container" th:if="${not #lists.isEmpty(personalEvents)}">
+                        <div class="event-item" th:each="evt : ${personalEvents}">
+                            <div class="event-marker marker-personal"></div>
+                            <div class="event-box event-box-personal">
+                                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge badge-type badge-personal">PERSONAL</span>
+                                        
+                                        <!-- Delete Button for Personal Calendar View -->
+                                        <form th:action="@{/personal-events/delete/{id}(id=${evt.id})}" method="POST" class="d-inline m-0" onsubmit="return confirm('Are you sure you want to delete this personal event?');">
+                                            <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0" title="Delete Personal Event" style="line-height: 1;">
+                                                <i class="fa-regular fa-trash-can text-danger"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <span class="text-muted small fw-semibold"><i class="fa-regular fa-clock me-1"></i>
+                                        <span th:text="${#temporals.format(evt.startDateTime, 'yyyy-MM-dd HH:mm')}">2026-06-01 10:00</span>
+                                        &rarr; 
+                                        <span th:text="${#temporals.format(evt.endDateTime, 'HH:mm')}">11:00</span>
+                                    </span>
+                                </div>
+                                <h5 class="mb-2" style="font-weight: 600;" th:text="${evt.title}">Consultation</h5>
+                                <div class="text-muted small mt-2 border-top pt-2">
+                                    <i class="fa-solid fa-eye-slash me-1"></i>Private details hidden from others
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center py-5 text-muted" th:if="${#lists.isEmpty(personalEvents)}">
+                        <i class="fa-regular fa-calendar-xmark fs-1 mb-3 text-secondary" style="opacity: 0.3;"></i>
+                        <p class="mb-0">No personal commitments scheduled.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Professional Calendar -->
+            <div class="col-lg-6">
+                <div class="timeline-card h-100">
+                    <h5 class="mb-4 text-primary" style="font-weight: 700;"><i class="fa-solid fa-user-md me-2"></i>Professional Appointments</h5>
+                    <div class="timeline-container" th:if="${not #lists.isEmpty(professionalEvents)}">
+                        <div class="event-item" th:each="evt : ${professionalEvents}">
+                            <div class="event-marker marker-professional"></div>
+                            <div class="event-box event-box-professional">
+                                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                    <span class="badge badge-type badge-professional">PROFESSIONAL</span>
+                                    <span class="text-muted small fw-semibold"><i class="fa-regular fa-clock me-1"></i>
+                                        <span th:text="${#temporals.format(evt.startDateTime, 'yyyy-MM-dd HH:mm')}">2026-06-01 10:00</span>
+                                    </span>
+                                </div>
+                                <h5 class="mb-2" style="font-weight: 600;" th:text="${evt.title}">Consultation</h5>
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted small mt-3 border-top pt-2" style="font-size: 0.85rem;">
+                                    <div>
+                                        <i class="fa-solid fa-user-doctor me-1"></i>Doctor: <strong th:text="${evt.doctorName}">Dr. House</strong> |
+                                        <i class="fa-solid fa-user me-1"></i>Patient: <strong th:text="${evt.patientName}">John Doe</strong>
+                                    </div>
+                                    <div th:if="${evt.status != null}">
+                                        <span th:if="${evt.status == 'ACTIVE'}" class="badge bg-success" style="border-radius: 6px;">Active</span>
+                                        <span th:if="${evt.status == 'CANCEL'}" class="badge bg-secondary" style="border-radius: 6px;">Cancelled</span>
+                                        <span th:if="${evt.status == 'PENDING_ACCEPTANCE'}" class="badge bg-warning text-dark" style="border-radius: 6px;">Pending</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center py-5 text-muted" th:if="${#lists.isEmpty(professionalEvents)}">
+                        <i class="fa-regular fa-calendar-xmark fs-1 mb-3 text-secondary" style="opacity: 0.3;"></i>
+                        <p class="mb-0">No active professional appointments.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Specialists Admin Panel Section (Only visible to Admin) -->
+        <div class="admin-section mt-5" sec:authorize="hasRole('ADMIN')">
+            <h4 class="mb-3 text-dark" style="font-weight: 700;"><i class="fa-solid fa-users-cog me-2 text-primary"></i>Specialists Admin Panel</h4>
+            <p class="text-muted small">Select a doctor below to inspect their schedules and book slots. Note that personal details are strictly masked for privacy.</p>
+            
+            <form th:action="@{/calendar}" method="GET" class="row g-3 align-items-center mb-4">
+                <input type="hidden" name="viewMode" th:value="${viewMode}" />
+                <div class="col-md-6">
+                    <select name="viewDoctorId" class="form-select form-select-lg" style="border-radius: 12px; font-weight:600;" onchange="this.form.submit()">
+                        <option value="">-- Select Specialist Doctor --</option>
+                        <option th:each="doc : ${doctors}" th:value="${doc.id}" th:text="${doc.name + ' (' + doc.id + ')'}" th:selected="${selectedDoctor != null && selectedDoctor.id == doc.id}"></option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <button type="submit" class="btn btn-lg btn-premium"><i class="fa-solid fa-eye me-1"></i>Inspect Schedule</button>
+                </div>
+            </form>
+
+            <!-- Inspected Doctor Calendar Details -->
+            <div th:if="${selectedDoctor != null}" class="timeline-card animate__animated animate__fadeIn">
+                <h5 class="mb-4 text-primary" style="font-weight: 700;"><i class="fa-solid fa-calendar-check me-2"></i>Professional Calendar for <span th:text="${selectedDoctor.name}">Doctor</span></h5>
+                <div class="timeline-container" th:if="${not #lists.isEmpty(selectedDoctorEvents)}">
+                    <div class="event-item" th:each="evt : ${selectedDoctorEvents}">
+                        <div th:class="${evt.type == 'PERSONAL' ? 'event-marker marker-personal' : 'event-marker marker-professional'}"></div>
+                        <div th:class="${evt.type == 'PERSONAL' ? 'event-box event-box-personal' : 'event-box event-box-professional'}">
+                            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                <span th:class="${evt.type == 'PERSONAL' ? 'badge badge-type badge-personal' : 'badge badge-type badge-professional'}" th:text="${evt.type}">PERSONAL</span>
+                                <span class="text-muted small fw-semibold"><i class="fa-regular fa-clock me-1"></i>
+                                    <span th:text="${#temporals.format(evt.startDateTime, 'yyyy-MM-dd HH:mm')}">2026-06-01 10:00</span>
+                                </span>
+                            </div>
+                            <!-- Title will show as masked if it was personal -->
+                            <h5 class="mb-2" style="font-weight: 600;" th:text="${evt.title}">Consultation</h5>
+                            
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted small mt-3 border-top pt-2" style="font-size: 0.85rem;">
+                                <div>
+                                    <span th:if="${evt.type == 'PROFESSIONAL'}">
+                                        <i class="fa-solid fa-user-doctor me-1"></i>Doctor: <strong th:text="${evt.doctorName}">Dr. House</strong> |
+                                        <i class="fa-solid fa-user me-1"></i>Patient: <strong th:text="${evt.patientName}">John Doe</strong>
+                                    </span>
+                                    <span th:if="${evt.type == 'PERSONAL'}">
+                                        <i class="fa-solid fa-mask me-1 text-danger"></i>Details strictly masked for privacy
+                                    </span>
+                                </div>
+                                <div th:if="${evt.status != null}">
+                                    <span th:if="${evt.status == 'ACTIVE'}" class="badge bg-success" style="border-radius: 6px;">Active</span>
+                                    <span th:if="${evt.status == 'CANCEL'}" class="badge bg-secondary" style="border-radius: 6px;">Cancelled</span>
+                                    <span th:if="${evt.status == 'PENDING_ACCEPTANCE'}" class="badge bg-warning text-dark" style="border-radius: 6px;">Pending</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Empty state fallback -->
+                <div class="text-center py-5 text-muted" th:if="${#lists.isEmpty(selectedDoctorEvents)}">
+                    <i class="fa-regular fa-calendar-xmark fs-1 mb-3 text-secondary" style="opacity: 0.3;"></i>
+                    <p class="mb-0">No schedule items booked for this doctor.</p>
+                </div>
+        </div>
+
+        <!-- Add Personal Event Section (Visible to any logged-in user) -->
+        <div class="admin-section mt-5" sec:authorize="isAuthenticated()">
+            <h4 class="mb-3 text-dark" style="font-weight: 700;"><i class="fa-solid fa-user-lock me-2" style="color: #6f42c1;"></i>Schedule Personal Event</h4>
+            <p class="text-muted small">Reserve a time block in your personal calendar. When avoidOverride is checked, this block will automatically reject any overlapping professional appointment bookings.</p>
+            
+            <form th:action="@{/personal-events/create}" method="POST" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small">Event Title</label>
+                    <input type="text" name="title" class="form-control" placeholder="e.g., Doctor Personal Time" required style="border-radius: 10px;">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small">Date</label>
+                    <input type="date" name="date" class="form-control" required style="border-radius: 10px;">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small">Start Time</label>
+                    <input type="time" name="startTime" class="form-control" required style="border-radius: 10px;">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small">End Time</label>
+                    <input type="time" name="endTime" class="form-control" required style="border-radius: 10px;">
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex flex-column gap-2 mb-2">
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input" type="checkbox" name="avoidOverride" id="avoidOverridePersonal" checked>
+                            <label class="form-check-label small fw-semibold" for="avoidOverridePersonal">Avoid Override</label>
+                        </div>
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input" type="checkbox" name="avoidStepOver" id="avoidStepOverPersonal" checked>
+                            <label class="form-check-label small fw-semibold" for="avoidStepOverPersonal">Avoid Step Over</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-purple" style="background-color: #6f42c1; color: white; border-radius: 12px; font-weight: 600; padding: 0.6rem 2rem;">
+                        <i class="fa-solid fa-calendar-plus me-1"></i>Add Personal Event
+                    </button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

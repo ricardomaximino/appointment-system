@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedPulse - Book Appointment</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --primary-gradient: linear-gradient(135deg, #0d6efd, #0dcaf0);
+            --bg-soft: #f8f9fc;
+            --card-shadow: 0 10px 30px rgba(13, 110, 253, 0.04), 0 1px 8px rgba(0, 0, 0, 0.02);
+            --font-family-sans-serif: 'Plus Jakarta Sans', sans-serif;
+            --font-family-title: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-soft);
+            font-family: var(--font-family-sans-serif);
+            color: #2b303a;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-family-title);
+            font-weight: 600;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.8) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-brand {
+            font-family: var(--font-family-title);
+            font-weight: 700;
+            font-size: 1.5rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-link {
+            font-weight: 500;
+            color: #4a5568 !important;
+            transition: color 0.2s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-color) !important;
+        }
+
+        .booking-card {
+            background: white;
+            border-radius: 24px;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            box-shadow: var(--card-shadow);
+            padding: 2.5rem;
+        }
+
+        .form-control, .form-select {
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+        }
+
+        .slot-pill {
+            background-color: #f1f3f9;
+            color: #2b303a;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            border-radius: 12px;
+            padding: 0.75rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .slot-pill:hover {
+            background-color: rgba(13, 110, 253, 0.08);
+            color: var(--primary-color);
+        }
+
+        .slot-pill.active {
+            background: var(--primary-gradient);
+            color: white !important;
+            border-color: transparent;
+            box-shadow: 0 8px 20px rgba(13, 110, 253, 0.25);
+        }
+
+        .no-slots-alert {
+            background-color: #fff8f8;
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .btn-premium {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.85rem 1.5rem;
+            font-weight: 600;
+            transition: opacity 0.2s ease;
+        }
+
+        .btn-premium:hover {
+            color: white;
+            opacity: 0.9;
+        }
+
+        /* Calendar Styling */
+        .calendar-card {
+            background: #ffffff;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.01);
+            transition: all 0.3s ease;
+        }
+
+        .calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #718096;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+        }
+
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            row-gap: 8px;
+            column-gap: 8px;
+            margin-top: 8px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #2d3748;
+            cursor: default;
+            user-select: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        /* Empty/Padding Days */
+        .calendar-day.empty {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Past Days */
+        .calendar-day.past {
+            color: #a0aec0;
+            opacity: 0.4;
+            pointer-events: none;
+            background-color: transparent;
+        }
+
+        /* Closed Company Days */
+        .calendar-day.closed-day {
+            background-color: #fff5f5;
+            color: #e53e3e;
+            opacity: 0.6;
+            pointer-events: none;
+            border: 1px dashed rgba(229, 62, 62, 0.3);
+        }
+
+        .calendar-day.closed-day::after {
+            content: 'Closed';
+            position: absolute;
+            bottom: 4px;
+            font-size: 0.55rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+            color: #e53e3e;
+        }
+
+        /* Doctor Available Days (Green) */
+        .calendar-day.doc-available {
+            background-color: #f0fdf4;
+            color: #15803d;
+            border: 1px solid rgba(21, 128, 61, 0.15);
+            cursor: pointer;
+        }
+
+        .calendar-day.doc-available:hover {
+            background-color: #dcfce7;
+            color: #166534;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(22, 101, 52, 0.15);
+        }
+
+        /* Doctor Unavailable Days */
+        .calendar-day.doc-unavailable {
+            color: #cbd5e1;
+            opacity: 0.4;
+            pointer-events: none;
+            background-color: transparent;
+        }
+
+        /* Active Selected Day */
+        .calendar-day.active-day {
+            background: var(--primary-gradient) !important;
+            color: white !important;
+            border-color: transparent !important;
+            box-shadow: 0 8px 16px rgba(13, 110, 253, 0.3) !important;
+            transform: scale(1.05) translateY(-2px);
+            z-index: 2;
+        }
+
+        /* Adjust header controls */
+        #prevMonthBtn:hover, #nextMonthBtn:hover {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* Scrollable Time Slots Sidebar */
+        .slots-scroll-container {
+            max-height: 290px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        /* Scrollbar aesthetics */
+        .slots-scroll-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .slots-scroll-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 10px;
+        }
+        .slots-scroll-container::-webkit-scrollbar-thumb {
+            background: rgba(13, 110, 253, 0.15);
+            border-radius: 10px;
+        }
+        .slots-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(13, 110, 253, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg sticky-top navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fa-solid fa-heart-pulse me-2"></i>MedPulse
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="fa-solid fa-chart-line me-1"></i>Dashboard</a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/doctors"><i class="fa-solid fa-user-doctor me-1"></i>Doctors</a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/patients"><i class="fa-solid fa-users me-1"></i>Patients</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/book"><i class="fa-solid fa-calendar-plus me-1"></i>Book Appointment</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/appointments"><i class="fa-solid fa-calendar-check me-1"></i>Appointments</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/calendar"><i class="fa-solid fa-calendar-days me-1"></i>Calendar</a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/closed-dates"><i class="fa-solid fa-building-circle-xmark me-1"></i>Closed Dates</a>
+                    </li>
+                    <!-- Auth items -->
+                    <li class="nav-item ms-lg-3 py-2 py-lg-0 border-lg-start ps-lg-3">
+                        <div class="d-flex align-items-center">
+                            <span class="text-muted small me-2"><i class="fa-solid fa-circle-user me-1 text-primary"></i>Logged in as <strong th:text="${currentUserId}">user</strong></span>
+                            <form th:action="@{/logout}" method="post" class="d-inline m-0">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius: 8px;"><i class="fa-solid fa-sign-out-alt"></i></button>
+                            </form>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content Container -->
+    <div class="container my-5" style="max-width: 900px;">
+        <h1 class="mb-4 text-center">Schedule Medical Appointment</h1>
+
+        <!-- Error Alert -->
+        <div th:if="${errorMessage}" class="alert alert-danger d-flex align-items-center mb-4 border-0 shadow-sm" role="alert" style="border-radius:12px;">
+            <i class="fa-solid fa-triangle-exclamation me-3 fs-4"></i>
+            <div th:text="${errorMessage}">Error message goes here</div>
+        </div>
+
+        <div class="booking-card">
+            <form id="bookingForm" th:action="@{/book}" method="POST">
+                
+                <!-- Rebooking tracking hidden input -->
+                <input type="hidden" name="rebookAppointmentId" th:if="${rebookAppointmentId != null}" th:value="${rebookAppointmentId}">
+
+                <!-- Mandatory Doctor, Patient & Type Selection -->
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <label for="doctorId" class="form-label">Select Medical Specialist</label>
+                        <select class="form-select" id="doctorId" name="doctorId" required>
+                            <option value="" disabled selected>-- Select a Doctor --</option>
+                            <option th:each="doc : ${doctors}" th:value="${doc.id}" 
+                                    th:text="${doc.name + ' - (' + doc.appointmentTypes + ')'}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <label for="patientId" class="form-label">Patient Profile</label>
+                        <select class="form-select" id="patientId" name="patientId" required>
+                            <option value="" disabled th:selected="${preselectedPatientId == null}">-- Patient Profile --</option>
+                            <option th:each="pat : ${patients}" th:value="${pat.id}" 
+                                    th:text="${pat.name}" th:selected="${pat.id == preselectedPatientId}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="appointmentType" class="form-label">Appointment Type</label>
+                        <select class="form-select" id="appointmentType" name="appointmentType" required>
+                            <option value="" disabled th:selected="${preselectedType == null}">-- Appointment Type --</option>
+                            <option th:each="type : ${appointmentTypes}" th:value="${type}" 
+                                    th:text="${type + ' (' + type.duration.toMinutes() + ' mins)'}"
+                                    th:selected="${type == preselectedType}"></option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Conflict Validation Options -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card p-3 border-0 bg-light" style="border-radius: 12px;">
+                            <h6 class="form-label mb-3" style="font-weight: 700;"><i class="fa-solid fa-shield-halved me-2 text-primary"></i>Conflict Prevention Rules</h6>
+                            <div class="d-flex flex-wrap gap-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="avoidOverride" name="avoidOverride" value="true" checked>
+                                    <label class="form-check-label fw-bold text-dark" for="avoidOverride">Avoid Override</label>
+                                    <div class="form-text small text-muted">Prevent booking over personal or professional calendar events.</div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="avoidStepOver" name="avoidStepOver" value="true" checked>
+                                    <label class="form-check-label fw-bold text-dark" for="avoidStepOver">Avoid Step-Over</label>
+                                    <div class="form-text small text-muted">Prevent boundary overlap/step-in with adjacent scheduled events.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Bottom Visual Section (Visual Calendar and Sidebar slots side-by-side, collapsed by default) -->
+                <div id="calendarAndSlotsContainer" style="display: none;" class="mb-4">
+                    <hr class="my-4" style="opacity: 0.1;">
+                    <h5 class="mb-3 text-secondary" style="font-weight: 700;"><i class="fa-solid fa-calendar-days me-2"></i>Select Date & Time</h5>
+                    
+                    <div class="row">
+                        <!-- Left Column: Custom Interactive Calendar -->
+                        <div class="col-md-7 mb-4 mb-md-0">
+                            <input type="hidden" id="date" name="date" required>
+                            
+                            <div class="calendar-card p-3">
+                                <div class="calendar-header d-flex justify-content-between align-items-center mb-3">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle" id="prevMonthBtn">
+                                        <i class="fa-solid fa-chevron-left"></i>
+                                    </button>
+                                    <h5 class="m-0 text-primary" id="calendarMonthYear" style="font-weight: 700;"></h5>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle" id="nextMonthBtn">
+                                        <i class="fa-solid fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="calendar-weekdays mb-2">
+                                    <div>Mon</div>
+                                    <div>Tue</div>
+                                    <div>Wed</div>
+                                    <div>Thu</div>
+                                    <div>Fri</div>
+                                    <div>Sat</div>
+                                    <div>Sun</div>
+                                </div>
+
+                                <div class="calendar-days" id="calendarDaysGrid">
+                                    <!-- Populated dynamically via JS -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Scrollable Available Time Slots Sidebar -->
+                        <div class="col-md-5 d-flex flex-column">
+                            <div class="calendar-card p-3 flex-grow-1 d-flex flex-column" style="min-height: 340px;">
+                                <h6 class="form-label mb-3" style="font-weight: 700;"><i class="fa-solid fa-clock me-2"></i>Available Time Slots</h6>
+                                
+                                <!-- Hidden Time Value -->
+                                <input type="hidden" id="selectedTime" name="time" required>
+
+                                <!-- Loader spinner -->
+                                <div id="slotsLoader" class="text-center text-primary my-auto" style="display: none;">
+                                    <i class="fa-solid fa-spinner fa-spin fs-3 me-2"></i>
+                                    <span class="d-block mt-2 font-weight-bold">Loading live slots...</span>
+                                </div>
+
+                                <!-- Select Date Placeholder -->
+                                <div id="selectDatePlaceholder" class="text-center text-muted my-auto py-4">
+                                    <i class="fa-solid fa-calendar-pointer fs-1 mb-2 d-block text-primary" style="opacity: 0.3;"></i>
+                                    <p class="mb-0 small">Please select an available green day from the calendar to view time slots.</p>
+                                </div>
+
+                                <!-- Dynamically Generated Pills Grid (Scrollable Container) -->
+                                <div id="slotsScrollArea" class="slots-scroll-container flex-grow-1" style="display: none;">
+                                    <div id="slotsGrid" class="row row-cols-2 g-2">
+                                        <!-- Loaded dynamically via JavaScript -->
+                                    </div>
+                                </div>
+
+                                <!-- No Slots Fallback -->
+                                <div id="noSlotsAlert" class="no-slots-alert my-auto p-3" style="display: none; border-radius: 12px;">
+                                    <i class="fa-solid fa-circle-exclamation fs-2 mb-2 d-block"></i>
+                                    <h6>No Slots Available</h6>
+                                    <p class="text-muted small mb-0">The doctor is either fully booked, not working, or the clinic is closed on this date.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submitBtn" class="btn btn-premium w-100 py-3" disabled>
+                    <i class="fa-solid fa-circle-check me-2"></i>Confirm Appointment Booking
+                </button>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Dynamic Slot Fetcher & Calendar Script -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const companyClosedDates = /*[[${companyClosedDates}]]*/ [];
+        /*]]>*/
+
+        // Calendar State variables
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth();
+        let selectedDoctorId = '';
+        let selectedDateStr = '';
+        let doctorInfo = null;
+
+        const monthNames = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+        const daysOfWeekNames = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+        const durationMap = {
+            'SHORT': 15,
+            'MEDIUM': 30,
+            'LONG': 60
+        };
+
+        // DOM elements
+        const doctorSelect = document.getElementById('doctorId');
+        const dateInput = document.getElementById('date');
+        const slotsGrid = document.getElementById('slotsGrid');
+        const noSlotsAlert = document.getElementById('noSlotsAlert');
+        const selectedTimeInput = document.getElementById('selectedTime');
+        const submitBtn = document.getElementById('submitBtn');
+        const typeSelect = document.getElementById('appointmentType');
+
+        const prevMonthBtn = document.getElementById('prevMonthBtn');
+        const nextMonthBtn = document.getElementById('nextMonthBtn');
+        const calendarMonthYear = document.getElementById('calendarMonthYear');
+        const calendarDaysGrid = document.getElementById('calendarDaysGrid');
+
+        function formatDateStr(year, month, day) {
+            const m = String(month + 1).padStart(2, '0');
+            const d = String(day).padStart(2, '0');
+            return `${year}-${m}-${d}`;
+        }
+
+        function renderCalendar(year, month) {
+            calendarMonthYear.innerText = `${monthNames[month]} ${year}`;
+            calendarDaysGrid.innerHTML = '';
+
+            let startDay = new Date(year, month, 1).getDay();
+            let startOffset = startDay === 0 ? 6 : startDay - 1;
+            let daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            // Padding empty cells
+            for (let i = 0; i < startOffset; i++) {
+                const emptyDiv = document.createElement('div');
+                emptyDiv.className = 'calendar-day empty';
+                calendarDaysGrid.appendChild(emptyDiv);
+            }
+
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+            // Days cells
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = formatDateStr(year, month, day);
+                const dayOfWeekStr = daysOfWeekNames[new Date(year, month, day).getDay()];
+
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                dayDiv.innerText = day;
+
+                const isPast = dateStr < todayStr;
+                const isClosed = companyClosedDates.includes(dateStr);
+
+                if (isPast) {
+                    dayDiv.classList.add('past');
+                } else if (isClosed) {
+                    dayDiv.classList.add('closed-day');
+                    dayDiv.title = 'Clinic Closed';
+                } else if (doctorInfo) {
+                    let isDocAvailable = false;
+                    
+                    if (doctorInfo.specificClosedDates.includes(dateStr)) {
+                        isDocAvailable = false;
+                    } else if (doctorInfo.specificAvailabilityDates.includes(dateStr)) {
+                        isDocAvailable = true;
+                    } else if (doctorInfo.weeklyAvailabilityDays.includes(dayOfWeekStr)) {
+                        isDocAvailable = true;
+                    }
+
+                    if (isDocAvailable) {
+                        dayDiv.classList.add('doc-available');
+                        dayDiv.title = 'Available Day';
+                        
+                        if (selectedDateStr === dateStr) {
+                            dayDiv.classList.add('active-day');
+                        }
+
+                        dayDiv.addEventListener('click', () => {
+                            document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('active-day'));
+                            dayDiv.classList.add('active-day');
+                            selectedDateStr = dateStr;
+                            dateInput.value = dateStr;
+                            fetchAvailableSlots();
+                        });
+                    } else {
+                        dayDiv.classList.add('doc-unavailable');
+                    }
+                } else {
+                    dayDiv.classList.add('doc-unavailable');
+                }
+
+                calendarDaysGrid.appendChild(dayDiv);
+            }
+        }
+
+        function checkUnlockState() {
+            const doctorSelected = doctorSelect.value !== '';
+            const typeSelected = typeSelect.value !== '';
+
+            if (doctorSelected && typeSelected) {
+                document.getElementById('calendarAndSlotsContainer').style.display = 'block';
+                renderCalendar(currentYear, currentMonth);
+            } else {
+                document.getElementById('calendarAndSlotsContainer').style.display = 'none';
+                resetDateAndSlots();
+            }
+        }
+
+        function resetDateAndSlots() {
+            selectedDateStr = '';
+            dateInput.value = '';
+            selectedTimeInput.value = '';
+            submitBtn.disabled = true;
+
+            // Show placeholder and hide other views
+            document.getElementById('selectDatePlaceholder').style.display = 'block';
+            document.getElementById('slotsScrollArea').style.display = 'none';
+            document.getElementById('slotsLoader').style.display = 'none';
+            noSlotsAlert.style.display = 'none';
+        }
+
+        async function onDoctorChange() {
+            const doctorId = doctorSelect.value;
+            if (!doctorId) {
+                doctorInfo = null;
+                checkUnlockState();
+                return;
+            }
+
+            resetDateAndSlots();
+
+            try {
+                const response = await fetch(`/api/doctor-info?doctorId=${doctorId}`);
+                if (!response.ok) throw new Error('Network error');
+                
+                doctorInfo = await response.json();
+
+                // Filter & select appointment types
+                const options = Array.from(typeSelect.options);
+                let smallestType = null;
+                let smallestDuration = Infinity;
+
+                options.forEach(opt => {
+                    if (opt.value === "") return;
+                    const isAllowed = doctorInfo.allowedTypes.includes(opt.value);
+                    if (isAllowed) {
+                        opt.disabled = false;
+                        opt.style.display = 'block';
+                        
+                        const duration = durationMap[opt.value] || 999;
+                        if (duration < smallestDuration) {
+                            smallestDuration = duration;
+                            smallestType = opt.value;
+                        }
+                    } else {
+                        opt.disabled = true;
+                        opt.style.display = 'none';
+                    }
+                });
+
+                if (smallestType) {
+                    typeSelect.value = smallestType;
+                } else {
+                    typeSelect.value = "";
+                }
+
+                // Update visibility and calendar
+                checkUnlockState();
+
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function fetchAvailableSlots() {
+            const doctorId = doctorSelect.value;
+            const date = dateInput.value;
+            const type = typeSelect.value;
+
+            if (!doctorId || !date || !type) return;
+
+            // Show loader, hide others
+            document.getElementById('selectDatePlaceholder').style.display = 'none';
+            document.getElementById('slotsScrollArea').style.display = 'none';
+            noSlotsAlert.style.display = 'none';
+            document.getElementById('slotsLoader').style.display = 'block';
+
+            selectedTimeInput.value = '';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch(`/api/slots?doctorId=${doctorId}&date=${date}&type=${type}`);
+                if (!response.ok) throw new Error('Network error');
+                
+                const slots = await response.json();
+                
+                // Hide loader
+                document.getElementById('slotsLoader').style.display = 'none';
+                slotsGrid.innerHTML = '';
+                
+                if (slots && slots.length > 0) {
+                    document.getElementById('slotsScrollArea').style.display = 'block';
+                    noSlotsAlert.style.display = 'none';
+
+                    slots.forEach((time, index) => {
+                        const col = document.createElement('div');
+                        col.className = 'col';
+                        
+                        const pill = document.createElement('div');
+                        pill.className = 'slot-pill w-100';
+                        pill.innerText = time;
+                        
+                        pill.addEventListener('click', () => {
+                            document.querySelectorAll('.slot-pill').forEach(p => p.classList.remove('active'));
+                            pill.classList.add('active');
+                            selectedTimeInput.value = time;
+                            submitBtn.disabled = false;
+                        });
+                        
+                        // Auto-select the first slot!
+                        if (index === 0) {
+                            pill.classList.add('active');
+                            selectedTimeInput.value = time;
+                            submitBtn.disabled = false;
+                        }
+
+                        col.appendChild(pill);
+                        slotsGrid.appendChild(col);
+                    });
+                } else {
+                    document.getElementById('slotsScrollArea').style.display = 'none';
+                    noSlotsAlert.style.display = 'block';
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('slotsLoader').style.display = 'none';
+                slotsGrid.innerHTML = '<div class="col-12 text-center text-danger py-3"><i class="fa-solid fa-triangle-exclamation me-2"></i>Failed to load slots.</div>';
+                document.getElementById('slotsScrollArea').style.display = 'block';
+            }
+        }
+
+        // Event listeners
+        doctorSelect.addEventListener('change', onDoctorChange);
+        
+        typeSelect.addEventListener('change', () => {
+            checkUnlockState();
+            if (selectedDateStr && doctorSelect.value) {
+                fetchAvailableSlots();
+            }
+        });
+
+        prevMonthBtn.addEventListener('click', () => {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar(currentYear, currentMonth);
+        });
+
+        nextMonthBtn.addEventListener('click', () => {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar(currentYear, currentMonth);
+        });
+
+        // Initialize calendar view
+        renderCalendar(currentYear, currentMonth);
+    </script>
+</body>
+</html>

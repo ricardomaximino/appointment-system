@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedPulse - Bookings</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --primary-gradient: linear-gradient(135deg, #0d6efd, #0dcaf0);
+            --bg-soft: #f8f9fc;
+            --card-shadow: 0 10px 30px rgba(13, 110, 253, 0.04), 0 1px 8px rgba(0, 0, 0, 0.02);
+            --font-family-sans-serif: 'Plus Jakarta Sans', sans-serif;
+            --font-family-title: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-soft);
+            font-family: var(--font-family-sans-serif);
+            color: #2b303a;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-family-title);
+            font-weight: 600;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.8) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-brand {
+            font-family: var(--font-family-title);
+            font-weight: 700;
+            font-size: 1.5rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-link {
+            font-weight: 500;
+            color: #4a5568 !important;
+            transition: color 0.2s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-color) !important;
+        }
+
+        .table-card {
+            background: white;
+            border-radius: 24px;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            box-shadow: var(--card-shadow);
+            padding: 2.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .table {
+            vertical-align: middle;
+            margin-bottom: 0;
+        }
+
+        .table th {
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #edf2f7;
+            padding: 1.25rem 1rem;
+        }
+
+        .table td {
+            padding: 1.25rem 1rem;
+            color: #2b303a;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .doctor-badge {
+            background-color: rgba(13, 110, 253, 0.06);
+            color: var(--primary-color);
+            padding: 0.35rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            display: inline-block;
+        }
+
+        .patient-badge {
+            background-color: rgba(108, 117, 125, 0.06);
+            color: #495057;
+            padding: 0.35rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            display: inline-block;
+        }
+
+        .type-badge {
+            background-color: rgba(111, 66, 193, 0.06);
+            color: #6f42c1;
+            padding: 0.35rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            display: inline-block;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .btn-cancel {
+            border: 1px solid rgba(220, 53, 69, 0.1);
+            background-color: transparent;
+            color: #dc3545;
+            border-radius: 10px;
+            padding: 0.45rem 1rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-cancel:hover {
+            background-color: #dc3545;
+            color: white;
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg sticky-top navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fa-solid fa-heart-pulse me-2"></i>MedPulse
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="fa-solid fa-chart-line me-1"></i>Dashboard</a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/doctors"><i class="fa-solid fa-user-doctor me-1"></i>Doctors</a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/patients"><i class="fa-solid fa-users me-1"></i>Patients</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/book"><i class="fa-solid fa-calendar-plus me-1"></i>Book Appointment</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/appointments"><i class="fa-solid fa-calendar-check me-1"></i>Appointments</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/calendar"><i class="fa-solid fa-calendar-days me-1"></i>Calendar</a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/closed-dates"><i class="fa-solid fa-building-circle-xmark me-1"></i>Closed Dates</a>
+                    </li>
+                    <!-- Auth items -->
+                    <li class="nav-item ms-lg-3 py-2 py-lg-0 border-lg-start ps-lg-3">
+                        <div class="d-flex align-items-center">
+                            <span class="text-muted small me-2"><i class="fa-solid fa-circle-user me-1 text-primary"></i>Logged in as <strong th:text="${currentUserId}">user</strong></span>
+                            <form th:action="@{/logout}" method="post" class="d-inline m-0">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius: 8px;"><i class="fa-solid fa-sign-out-alt"></i></button>
+                            </form>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container my-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Active Registered Bookings</h1>
+            <a href="/book" class="btn btn-primary px-4 py-2" style="border-radius:12px; font-weight:600;">
+                <i class="fa-solid fa-calendar-plus me-2"></i>New Appointment
+            </a>
+        </div>
+
+        <!-- Alerts -->
+        <div th:if="${successMessage}" class="alert alert-success d-flex align-items-center mb-4 border-0 shadow-sm" role="alert" style="border-radius:12px;">
+            <i class="fa-solid fa-circle-check me-3 fs-4"></i>
+            <div th:text="${successMessage}">Success message goes here</div>
+        </div>
+
+        <div th:if="${errorMessage}" class="alert alert-danger d-flex align-items-center mb-4 border-0 shadow-sm" role="alert" style="border-radius:12px;">
+            <i class="fa-solid fa-triangle-exclamation me-3 fs-4"></i>
+            <div th:text="${errorMessage}">Error message goes here</div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="table-card">
+            <div class="table-responsive" th:if="${not #lists.isEmpty(appointments)}">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Medical Specialist</th>
+                            <th>Patient Profile</th>
+                            <th>Date &amp; Time</th>
+                            <th>Type &amp; Duration</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="app : ${appointments}">
+                            <td>
+                                <span class="doctor-badge" th:style="${app.doctor == null ? 'background: #f8d7da; color: #721c24;' : ''}">
+                                    <i class="fa-solid fa-user-doctor me-1"></i>
+                                    <span th:text="${app.doctor != null ? app.doctor.name : 'Unassigned (Needs Rebooking)'}">Dr. House</span>
+                                </span>
+                            </td>
+                            <td>
+                                <span class="patient-badge">
+                                    <i class="fa-solid fa-user me-1"></i>
+                                    <span th:text="${app.patient != null ? app.patient.name : 'Unknown Patient'}">John Doe</span>
+                                </span>
+                            </td>
+                            <td class="fw-bold">
+                                <span th:text="${#temporals.format(app.dateTime, 'yyyy-MM-dd HH:mm')}">2026-06-01 10:00</span>
+                            </td>
+                            <td>
+                                <span class="type-badge" th:if="${app.type != null}">
+                                    <span th:text="${app.type + ' (' + app.type.duration.toMinutes() + 'm)'}">SHORT (30m)</span>
+                                </span>
+                                <span class="badge bg-light text-muted small" th:if="${app.type == null}">N/A</span>
+                            </td>
+                            <td>
+                                <span th:if="${app.status == 'ACTIVE'}" class="badge bg-success" style="border-radius: 8px; font-size: 0.85rem;">Active</span>
+                                <span th:if="${app.status == 'CANCEL'}" class="badge bg-secondary" style="border-radius: 8px; font-size: 0.85rem;">Cancelled</span>
+                                <span th:if="${app.status == 'PENDING_ACCEPTANCE'}" class="badge bg-warning text-dark" style="border-radius: 8px; font-size: 0.85rem;">Pending Acceptance</span>
+                                <span th:if="${app.status == 'REBOOK'}" class="badge bg-danger text-white" style="border-radius: 8px; font-size: 0.85rem;">Needs Rebooking</span>
+                                <div th:if="${app.statusNotes != null && !app.statusNotes.isEmpty()}" class="text-muted small font-monospace mt-1" style="font-size: 0.72rem;" th:text="${app.statusNotes}">Declined notes</div>
+                            </td>
+                            <td class="text-end">
+                                <!-- Standard Active/Rebook Cancelling -->
+                                <form th:if="${app.status == 'ACTIVE' || app.status == 'REBOOK'}" th:action="@{/appointments/cancel/{id}(id=${app.id})}" method="POST" 
+                                      onsubmit="return confirm('Are you sure you want to cancel this appointment?');" class="d-inline">
+                                    <button type="submit" class="btn btn-cancel">
+                                        <i class="fa-regular fa-trash-can me-1"></i>Cancel
+                                    </button>
+                                </form>
+                                <!-- Patient Acceptance Actions -->
+                                <span th:if="${app.status == 'PENDING_ACCEPTANCE'}">
+                                    <span th:if="${app.patient != null && app.patient.patientId == currentUserId}">
+                                        <form th:action="@{/appointments/accept/{id}(id=${app.id})}" method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-success fw-bold me-1" style="border-radius: 8px;">Accept</button>
+                                        </form>
+                                        <form th:action="@{/appointments/decline/{id}(id=${app.id})}" method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger fw-bold" style="border-radius: 8px;" onclick="return confirm('Are you sure you want to decline?');">Decline</button>
+                                        </form>
+                                    </span>
+                                    <span th:if="${app.patient == null || app.patient.patientId != currentUserId}" class="badge bg-light text-muted small" style="border-radius: 6px;">Waiting for Patient</span>
+                                </span>
+                                <!-- Cancelled -->
+                                <span th:if="${app.status == 'CANCEL'}" class="text-muted small">N/A</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State Fallback -->
+            <div class="empty-state" th:if="${#lists.isEmpty(appointments)}">
+                <i class="fa-regular fa-calendar-xmark text-muted mb-3" style="font-size: 5rem;"></i>
+                <h4>No Appointments Booked</h4>
+                <p class="text-muted mb-4">There are currently no scheduled appointments in the MedPulse system.</p>
+                <a href="/book" class="btn btn-primary py-2.5 px-4" style="border-radius:12px; font-weight:600;">
+                    Schedule First Appointment
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

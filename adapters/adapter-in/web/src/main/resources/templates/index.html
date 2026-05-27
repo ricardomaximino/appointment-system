@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedPulse - Dashboard</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <!-- Custom Sleek Styling -->
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --primary-gradient: linear-gradient(135deg, #0d6efd, #0dcaf0);
+            --bg-soft: #f8f9fc;
+            --card-shadow: 0 10px 30px rgba(13, 110, 253, 0.04), 0 1px 8px rgba(0, 0, 0, 0.02);
+            --font-family-sans-serif: 'Plus Jakarta Sans', sans-serif;
+            --font-family-title: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-soft);
+            font-family: var(--font-family-sans-serif);
+            color: #2b303a;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-family-title);
+            font-weight: 600;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.8) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-brand {
+            font-family: var(--font-family-title);
+            font-weight: 700;
+            font-size: 1.5rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-link {
+            font-weight: 500;
+            color: #4a5568 !important;
+            transition: color 0.2s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-color) !important;
+        }
+
+        .hero-section {
+            background: var(--primary-gradient);
+            border-radius: 24px;
+            color: white;
+            padding: 3rem 2rem;
+            margin-bottom: 2.5rem;
+            box-shadow: 0 20px 40px rgba(13, 110, 253, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::after {
+            content: '';
+            position: absolute;
+            top: -20%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            filter: blur(50px);
+        }
+
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(13, 110, 253, 0.08);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-icon-blue {
+            background-color: rgba(13, 110, 253, 0.08);
+            color: #0d6efd;
+        }
+
+        .stat-icon-teal {
+            background-color: rgba(13, 202, 240, 0.08);
+            color: #0dcaf0;
+        }
+
+        .stat-icon-indigo {
+            background-color: rgba(111, 66, 193, 0.08);
+            color: #6f42c1;
+        }
+
+        .stat-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .action-card {
+            background: white;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            padding: 2rem;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+            height: 100%;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .action-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(13, 110, 253, 0.08);
+        }
+
+        .btn-premium {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            transition: opacity 0.2s ease;
+        }
+
+        .btn-premium:hover {
+            color: white;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg sticky-top navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fa-solid fa-heart-pulse me-2"></i>MedPulse
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/"><i class="fa-solid fa-chart-line me-1"></i>Dashboard</a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/doctors"><i class="fa-solid fa-user-doctor me-1"></i>Doctors</a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/patients"><i class="fa-solid fa-users me-1"></i>Patients</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/book"><i class="fa-solid fa-calendar-plus me-1"></i>Book Appointment</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/appointments"><i class="fa-solid fa-calendar-check me-1"></i>Appointments</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/calendar"><i class="fa-solid fa-calendar-days me-1"></i>Calendar</a>
+                    </li>
+                    <li class="nav-item" sec:authorize="hasRole('ADMIN')">
+                        <a class="nav-link" href="/closed-dates"><i class="fa-solid fa-building-circle-xmark me-1"></i>Closed Dates</a>
+                    </li>
+                    <!-- Auth items -->
+                    <li class="nav-item ms-lg-3 py-2 py-lg-0 border-lg-start ps-lg-3">
+                        <div class="d-flex align-items-center">
+                            <span class="text-muted small me-2"><i class="fa-solid fa-circle-user me-1 text-primary"></i>Logged in as <strong th:text="${currentUserId}">user</strong></span>
+                            <form th:action="@{/logout}" method="post" class="d-inline m-0">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius: 8px;"><i class="fa-solid fa-sign-out-alt"></i></button>
+                            </form>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        
+        <!-- Hero Section -->
+        <div class="hero-section">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="hero-title">Welcome to MedPulse</h1>
+                    <p class="lead mb-0 opacity-75">Your high-performance, real-time medical scheduling assistant. Manage availability, doctors, and slot bookings seamlessly.</p>
+                </div>
+                <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
+                    <a href="/book" class="btn btn-light btn-lg px-4 py-2 text-primary fw-bold" style="border-radius: 12px;">
+                        <i class="fa-solid fa-calendar-plus me-2"></i>Book Now
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Appointment Requests for Patient -->
+        <div th:if="${pendingAppointments != null && !pendingAppointments.isEmpty()}" class="alert alert-info shadow-sm border-0 mb-5 p-4 animate__animated animate__fadeIn" style="border-radius: 20px; background-color: #e2f0fe; color: #084298;">
+            <div class="d-flex align-items-center mb-3">
+                <i class="fa-solid fa-bell fs-3 me-3 text-primary animate__animated animate__swing animate__infinite"></i>
+                <h4 class="m-0" style="font-weight: 700; font-family: 'Outfit', sans-serif;">Pending Appointment Invitations</h4>
+            </div>
+            <p class="mb-3">You have new scheduling requests. Please accept them to secure your slots or decline to cancel:</p>
+            <div class="table-responsive">
+                <table class="table align-middle m-0" style="color: #084298; background-color: transparent;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid rgba(8, 66, 152, 0.1);">
+                            <th>Specialist Doctor</th>
+                            <th>Date & Time</th>
+                            <th>Appointment Type</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="app : ${pendingAppointments}" style="border-bottom: 1px solid rgba(8, 66, 152, 0.05);">
+                            <td style="font-weight: 600;" th:text="${app.doctor != null ? app.doctor.name : 'Unknown Doctor'}">Dr. House</td>
+                            <td th:text="${#temporals.format(app.dateTime, 'yyyy-MM-dd HH:mm')}">2026-06-01 10:00</td>
+                            <td>
+                                <span class="badge bg-primary text-white px-2.5 py-1.5" style="font-size: 0.8rem; border-radius: 8px;" th:text="${app.type}">SHORT</span>
+                            </td>
+                            <td class="text-end">
+                                <form th:action="@{/appointments/accept/{id}(id=${app.id})}" method="POST" class="d-inline me-2">
+                                    <button type="submit" class="btn btn-sm btn-success fw-bold shadow-sm" style="border-radius: 8px; font-size: 0.85rem;">
+                                        <i class="fa-solid fa-check me-1"></i>Accept
+                                    </button>
+                                </form>
+                                <form th:action="@{/appointments/decline/{id}(id=${app.id})}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger fw-bold shadow-sm" style="border-radius: 8px; font-size: 0.85rem;" onclick="return confirm('Are you sure you want to decline this appointment?')">
+                                        <i class="fa-solid fa-xmark me-1"></i>Decline
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Urgent Action Required (Rebooking Alerts) -->
+        <div th:if="${rebookAppointments != null && !rebookAppointments.isEmpty()}" class="alert alert-warning shadow-sm border-0 mb-5 p-4 animate__animated animate__fadeIn" style="border-radius: 20px; background-color: #fff3cd; color: #856404;">
+            <div class="d-flex align-items-center mb-3">
+                <i class="fa-solid fa-circle-exclamation fs-3 me-3 text-danger"></i>
+                <h4 class="m-0" style="font-weight: 700; font-family: 'Outfit', sans-serif;">Urgent Action Required</h4>
+            </div>
+            <p class="mb-3">The following appointments are currently unassigned because their specialist has left or was deleted. Please rebook or cancel them immediately:</p>
+            <div class="table-responsive">
+                <table class="table align-middle m-0" style="color: #856404; background-color: transparent;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid rgba(133, 100, 4, 0.1);">
+                            <th>Patient</th>
+                            <th>Requested Date & Time</th>
+                            <th>Appointment Type</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="app : ${rebookAppointments}" style="border-bottom: 1px solid rgba(133, 100, 4, 0.05);">
+                            <td style="font-weight: 600;" th:text="${app.patient != null ? app.patient.name : 'Unknown Patient'}">John Doe</td>
+                            <td th:text="${#temporals.format(app.dateTime, 'yyyy-MM-dd HH:mm')}">2026-06-01 10:00</td>
+                            <td>
+                                <span class="badge bg-warning text-dark px-2.5 py-1.5" style="font-size: 0.8rem; border-radius: 8px;" th:text="${app.type}">SHORT</span>
+                            </td>
+                            <td class="text-end">
+                                <a th:href="@{/book(rebookAppointmentId=${app.id})}" class="btn btn-sm btn-primary me-2 fw-bold shadow-sm" style="border-radius: 8px; font-size: 0.85rem;">
+                                    <i class="fa-solid fa-arrows-spin me-1"></i>Rebook
+                                </a>
+                                <form th:action="@{/appointments/cancel/{id}(id=${app.id})}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-danger fw-bold shadow-sm" style="border-radius: 8px; font-size: 0.85rem;" onclick="return confirm('Are you sure you want to cancel this appointment?')">
+                                        <i class="fa-solid fa-trash me-1"></i>Cancel
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <a href="/doctors" style="text-decoration: none; color: inherit;">
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-blue">
+                            <i class="fa-solid fa-user-doctor"></i>
+                        </div>
+                        <div class="stat-value" th:text="${doctorCount}">3</div>
+                        <div class="stat-label">Active Doctors &rarr;</div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/patients" style="text-decoration: none; color: inherit;">
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-teal">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div class="stat-value" th:text="${patientCount}">2</div>
+                        <div class="stat-label">Registered Patients &rarr;</div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/appointments" style="text-decoration: none; color: inherit;">
+                    <div class="stat-card">
+                        <div class="stat-icon stat-icon-indigo">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                        <div class="stat-value" th:text="${appointmentCount}">0</div>
+                        <div class="stat-label">Total Bookings &rarr;</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Action Grid -->
+        <h2 class="mb-4">Quick Management Actions</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="action-card">
+                    <div class="stat-icon stat-icon-blue mx-auto mb-3">
+                        <i class="fa-solid fa-calendar-plus"></i>
+                    </div>
+                    <h4>New Appointment</h4>
+                    <p class="text-muted small">Select a doctor, view their live shifts, and book an available time slot dynamically.</p>
+                    <a href="/book" class="btn btn-premium mt-3 w-100">Go to Booking Form</a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="action-card">
+                    <div class="stat-icon stat-icon-indigo mx-auto mb-3">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                    <h4>Manage Bookings</h4>
+                    <p class="text-muted small">View all registered slots in real time. Cancel appointments instantly with full cascade support.</p>
+                    <a href="/appointments" class="btn btn-outline-primary mt-3 w-100" style="border-radius: 12px; font-weight:600;">View Active Bookings</a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="action-card">
+                    <div class="stat-icon stat-icon-teal mx-auto mb-3">
+                        <i class="fa-solid fa-building-circle-xmark"></i>
+                    </div>
+                    <h4>Closed Dates</h4>
+                    <p class="text-muted small">Manage the calendar of dates that the company is closed. Overlaps with bookings will automatically trigger blocks.</p>
+                    <a href="/closed-dates" class="btn btn-outline-info mt-3 w-100" style="border-radius: 12px; font-weight:600;">Manage Closed Dates</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
