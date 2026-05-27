@@ -1,30 +1,48 @@
 package es.brasatech.medpulse.service;
 
 import es.brasatech.medpulse.domain.*;
+import es.brasatech.medpulse.entity.*;
+import es.brasatech.medpulse.mapper.*;
+import es.brasatech.medpulse.repository.*;
+import es.brasatech.medpulse.service.delegation.*;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SimpleAppointmentService implements AppointmentService {
 
-    protected Map<String, Doctor> doctors;
-    protected Map<String, Patient> patients;
-    protected Map<AppointmentSlot, Patient> slots;
-    protected Set<LocalDate> companyClosedDates;
+    public Map<String, Doctor> doctors;
+    public Map<String, Patient> patients;
+    public Map<AppointmentSlot, Patient> slots;
+    public Set<LocalDate> companyClosedDates;
     protected AppointmentSlotAvailabilityValidator validator;
+    protected AppointmentRepository appointmentRepository;
+    protected DoctorMapper doctorMapper;
 
     public SimpleAppointmentService() {
-        doctors = InMemoryDataStore.doctors;
-        patients = InMemoryDataStore.patients;
-        slots = InMemoryDataStore.slots;
-        companyClosedDates = InMemoryDataStore.companyClosedDates;
-        validator = new AppointmentSlotAvailabilityValidator(companyClosedDates);
+        var context = DbContext.getContext();
+        var doctorRepository = context.getBean(DoctorRepository.class);
+        var patientRepository = context.getBean(PatientRepository.class);
+        this.appointmentRepository = context.getBean(AppointmentRepository.class);
+        var companyClosedDateRepository = context.getBean(CompanyClosedDateRepository.class);
+
+        this.doctorMapper = context.getBean(DoctorMapper.class);
+        var patientMapper = context.getBean(PatientMapper.class);
+        var appointmentMapper = context.getBean(AppointmentMapper.class);
+
+        this.doctors = new DoctorDelegationMap(doctorRepository, this.doctorMapper);
+        this.patients = new PatientDelegationMap(patientRepository, patientMapper);
+        this.slots = new SlotDelegationMap(this.appointmentRepository, doctorRepository, patientRepository, this.doctorMapper, patientMapper);
+        this.companyClosedDates = new ClosedDateDelegationSet(companyClosedDateRepository);
+        this.validator = new AppointmentSlotAvailabilityValidator(this.companyClosedDates);
     }
 
     public void clearBookings() {
@@ -36,8 +54,8 @@ public class SimpleAppointmentService implements AppointmentService {
         if (doctor == null) {
             throw new IllegalArgumentException("Doctor not found: " + doctorId);
         }
-        if (!doctor.appointmentTypes().contains(appointmentType)) {
-            System.out.printf("Doctor %s does not have permissions to be assigned for appointment type %s\n", doctor.name(), appointmentType);
+        if (!doctor.getAppointmentTypes().contains(appointmentType)) {
+            System.out.printf("Doctor %s does not have permissions to be assigned for appointment type %s\n", doctor.getName(), appointmentType);
         }
         var slot = new AppointmentSlot(doctor, appointmentDateTime, appointmentType);
         validator.validate(slot);
@@ -57,22 +75,24 @@ public class SimpleAppointmentService implements AppointmentService {
             return false;
         }
 
-        LocalDateTime startNew = slot.dateTime();
-        LocalDateTime endNew = startNew.plus(slot.type().getDuration());
+        LocalDateTime startNew = slot.getDateTime();
+        LocalDateTime endNew = startNew.plus(slot.getType().getDuration());
 
-        // Check if doctor has any overlapping appointment slot (strictly single-threaded check)
-        for (var entry : slots.entrySet()) {
-            var bookedSlot = entry.getKey();
-            if (bookedSlot.doctor().doctorId().equals(slot.doctor().doctorId())) {
-                LocalDateTime startBooked = bookedSlot.dateTime();
-                LocalDateTime endBooked = startBooked.plus(bookedSlot.type().getDuration());
+        // Optimized: pre-fetch booked appointments for this doctor once
+        List<AppointmentEntity> doctorAppointments = appointmentRepository.findByDoctorDoctorId(slot.getDoctor().getDoctorId());
 
-                // Overlap condition: startNew < endBooked AND startBooked < endNew
-                if (startNew.isBefore(endBooked) && startBooked.isBefore(endNew)) {
+        // Check if doctor has any overlapping appointment slot
+        for (var booked : doctorAppointments) {
+            LocalDateTime startBooked = booked.getDateTime();
+            LocalDateTime endBooked = startBooked.plus(booked.getType().getDuration());
+
+            // Overlap condition: startNew < endBooked AND startBooked < endNew
+            if (startNew.isBefore(endBooked) && startBooked.isBefore(endNew)) {
+                if (!"true".equals(System.getProperty("benchmark.active"))) {
                     System.out.printf("Overlap detected! Doctor %s is already booked from %s to %s. Desired slot is %s to %s.%n",
-                            slot.doctor().name(), startBooked, endBooked, startNew, endNew);
-                    return false;
+                            slot.getDoctor().getName(), startBooked, endBooked, startNew, endNew);
                 }
+                return false;
             }
         }
 
@@ -84,7 +104,9 @@ public class SimpleAppointmentService implements AppointmentService {
         }
 
         slots.put(slot, patient);
-        System.out.println("Appointment slot [doctor: %s, start: %s, end: %s ] was registered successfully!".formatted(slot.doctor().name(), startNew, endNew));
+        if (!"true".equals(System.getProperty("benchmark.active"))) {
+            System.out.println("Appointment slot [doctor: %s, start: %s, end: %s ] was registered successfully!".formatted(slot.getDoctor().getName(), startNew, endNew));
+        }
         return true;
     }
 
@@ -102,12 +124,12 @@ public class SimpleAppointmentService implements AppointmentService {
 
         // 2. Resolve active shifts for the day (prioritize specific dates over weekly recurring schedules)
         List<TimeRange> shifts = null;
-        if (doctor.specificDatesAvailability() != null && doctor.specificDatesAvailability().containsKey(date)) {
-            shifts = doctor.specificDatesAvailability().get(date);
+        if (doctor.getSpecificDatesAvailability() != null && doctor.getSpecificDatesAvailability().containsKey(date)) {
+            shifts = doctor.getSpecificDatesAvailability().get(date);
         } else {
             DayOfWeek dayOfWeek = date.getDayOfWeek();
-            if (doctor.weeklyAvailability() != null && doctor.weeklyAvailability().containsKey(dayOfWeek)) {
-                shifts = doctor.weeklyAvailability().get(dayOfWeek);
+            if (doctor.getWeeklyAvailability() != null && doctor.getWeeklyAvailability().containsKey(dayOfWeek)) {
+                shifts = doctor.getWeeklyAvailability().get(dayOfWeek);
             }
         }
 
@@ -115,10 +137,13 @@ public class SimpleAppointmentService implements AppointmentService {
             return List.of();
         }
 
+        // Optimized: pre-fetch booked appointments for this doctor once
+        List<AppointmentEntity> doctorAppointments = appointmentRepository.findByDoctorDoctorId(doctorId);
+
         List<LocalDateTime> availableSlots = new ArrayList<>();
 
         // Resolve step size based on the doctor's allowed appointment types with the smallest duration value
-        long stepMinutes = doctor.appointmentTypes().stream()
+        long stepMinutes = doctor.getAppointmentTypes().stream()
                 .mapToLong(t -> t.getDuration().toMinutes())
                 .min()
                 .orElse(30); // fallback to 30 minutes if none configured
@@ -129,18 +154,15 @@ public class SimpleAppointmentService implements AppointmentService {
             while (time.isBefore(shift.end())) {
                 LocalDateTime candidateStart = date.atTime(time);
 
-                // Check if it overlaps with any already registered slots
+                // Check overlap against our pre-fetched doctorAppointments list
                 boolean isBooked = false;
-                for (var entry : slots.entrySet()) {
-                    var bookedSlot = entry.getKey();
-                    if (bookedSlot.doctor().doctorId().equals(doctorId)) {
-                        LocalDateTime startBooked = bookedSlot.dateTime();
-                        LocalDateTime endBooked = startBooked.plus(bookedSlot.type().getDuration());
+                for (var booked : doctorAppointments) {
+                    LocalDateTime startBooked = booked.getDateTime();
+                    LocalDateTime endBooked = startBooked.plus(booked.getType().getDuration());
 
-                        if (!candidateStart.isBefore(startBooked) && candidateStart.isBefore(endBooked)) {
-                            isBooked = true;
-                            break;
-                        }
+                    if (!candidateStart.isBefore(startBooked) && candidateStart.isBefore(endBooked)) {
+                        isBooked = true;
+                        break;
                     }
                 }
 
@@ -153,7 +175,12 @@ public class SimpleAppointmentService implements AppointmentService {
             }
         }
 
-        CalendarConsolePrinter.printDayCalendar(doctor, date, availableSlots, slots.keySet());
+        if (!"true".equals(System.getProperty("benchmark.active"))) {
+            Set<AppointmentSlot> bookedSlots = doctorAppointments.stream()
+                    .map(app -> new AppointmentSlot(this.doctorMapper.toDomain(app.getDoctor()), app.getDateTime(), app.getType()))
+                    .collect(Collectors.toSet());
+            CalendarConsolePrinter.printDayCalendar(doctor, date, availableSlots, bookedSlots);
+        }
         return availableSlots;
     }
 
@@ -164,7 +191,9 @@ public class SimpleAppointmentService implements AppointmentService {
         for (int i = 0; i < 7; i++) {
             weeklySlots.addAll(getAvailableSlots(doctorId, startOfWeek.plusDays(i)));
         }
-        CalendarConsolePrinter.printWeekCalendar(doctors.get(doctorId), date, weeklySlots);
+        if (!"true".equals(System.getProperty("benchmark.active"))) {
+            CalendarConsolePrinter.printWeekCalendar(doctors.get(doctorId), date, weeklySlots);
+        }
         return weeklySlots;
     }
 
@@ -176,7 +205,9 @@ public class SimpleAppointmentService implements AppointmentService {
         for (int day = 1; day <= lengthOfMonth; day++) {
             monthlySlots.addAll(getAvailableSlots(doctorId, LocalDate.of(year, month, day)));
         }
-        CalendarConsolePrinter.printMonthCalendar(doctors.get(doctorId), year, month, monthlySlots);
+        if (!"true".equals(System.getProperty("benchmark.active"))) {
+            CalendarConsolePrinter.printMonthCalendar(doctors.get(doctorId), year, month, monthlySlots);
+        }
         return monthlySlots;
     }
 
@@ -186,7 +217,9 @@ public class SimpleAppointmentService implements AppointmentService {
         for (int month = 1; month <= 12; month++) {
             yearlySlots.addAll(getAvailableSlotsForMonth(doctorId, year, month));
         }
-        CalendarConsolePrinter.printYearCalendar(doctors.get(doctorId), year, yearlySlots);
+        if (!"true".equals(System.getProperty("benchmark.active"))) {
+            CalendarConsolePrinter.printYearCalendar(doctors.get(doctorId), year, yearlySlots);
+        }
         return yearlySlots;
     }
 }

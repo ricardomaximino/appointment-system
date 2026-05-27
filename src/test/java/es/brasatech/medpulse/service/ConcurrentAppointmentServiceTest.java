@@ -278,76 +278,79 @@ class ConcurrentAppointmentServiceTest {
 
     @Test
     void testHighVolumeConcurrentThroughput() throws InterruptedException {
-        appointmentService.clearBookings();
+        System.setProperty("benchmark.active", "true");
+        try {
+            appointmentService.clearBookings();
 
-        int numRequests = 5000;
-        var executor = Executors.newVirtualThreadPerTaskExecutor();
-        var successfulBookings = new AtomicInteger(0);
-        var failedBookings = new AtomicInteger(0);
-        var readSuccessCount = new AtomicInteger(0);
-        
-        LocalDate nextMonday = getNextDayOfWeek(DayOfWeek.MONDAY);
-        LocalDate nextWednesday = getNextDayOfWeek(DayOfWeek.WEDNESDAY);
-        
-        var startNano = System.nanoTime();
-        var latch = new CountDownLatch(numRequests);
+            int numRequests = 5000;
+            var executor = Executors.newVirtualThreadPerTaskExecutor();
+            var successfulBookings = new AtomicInteger(0);
+            var failedBookings = new AtomicInteger(0);
+            var readSuccessCount = new AtomicInteger(0);
+            
+            LocalDate nextMonday = getNextDayOfWeek(DayOfWeek.MONDAY);
+            LocalDate nextWednesday = getNextDayOfWeek(DayOfWeek.WEDNESDAY);
+            
+            var startNano = System.nanoTime();
+            var latch = new CountDownLatch(numRequests);
 
-        for (int i = 0; i < numRequests; i++) {
-            final int index = i;
-            executor.submit(() -> {
-                try {
-                    String doctorId = "doc" + ((index % 3) + 1); // doc1, doc2, doc3
-                    LocalDate targetDate = (index % 2 == 0) ? nextMonday : nextWednesday;
+            for (int i = 0; i < numRequests; i++) {
+                final int index = i;
+                executor.submit(() -> {
+                    try {
+                        String doctorId = "doc" + ((index % 3) + 1); // doc1, doc2, doc3
+                        LocalDate targetDate = (index % 2 == 0) ? nextMonday : nextWednesday;
 
-                    if (index % 5 != 0) {
-                        // 80% Read Queries: Get available slots (suppress printing inside loops for high-speed benchmark)
-                        // Actually, our getAvailableSlots prints to the console which would slow down the test,
-                        // but let's measure how fast it is even with console printing, or we can just see that it runs extremely fast!
-                        var slots = appointmentService.getAvailableSlots(doctorId, targetDate);
-                        if (slots != null) {
-                            readSuccessCount.incrementAndGet();
-                        }
-                    } else {
-                        // 20% Write Queries: Book a slot
-                        int hour = 9 + (index % 8); // 9:00 to 16:00
-                        var dateTime = targetDate.atTime(hour, 0);
-                        var patient = new Patient("pat_" + index, "Patient " + index);
-                        
-                        try {
-                            var slot = appointmentService.createAppointmentSlot(dateTime, doctorId, AppointmentType.SHORT);
-                            if (appointmentService.registerAppointmentSlot(slot, patient)) {
-                                successfulBookings.incrementAndGet();
-                            } else {
+                        if (index % 5 != 0) {
+                            // 80% Read Queries: Get available slots (suppress printing inside loops for high-speed benchmark)
+                            var slots = appointmentService.getAvailableSlots(doctorId, targetDate);
+                            if (slots != null) {
+                                readSuccessCount.incrementAndGet();
+                            }
+                        } else {
+                            // 20% Write Queries: Book a slot
+                            int hour = 9 + (index % 8); // 9:00 to 16:00
+                            var dateTime = targetDate.atTime(hour, 0);
+                            var patient = new Patient("pat_" + index, "Patient " + index);
+                            
+                            try {
+                                var slot = appointmentService.createAppointmentSlot(dateTime, doctorId, AppointmentType.SHORT);
+                                if (appointmentService.registerAppointmentSlot(slot, patient)) {
+                                    successfulBookings.incrementAndGet();
+                                } else {
+                                    failedBookings.incrementAndGet();
+                                }
+                            } catch (Exception e) {
                                 failedBookings.incrementAndGet();
                             }
-                        } catch (Exception e) {
-                            failedBookings.incrementAndGet();
                         }
+                    } finally {
+                        latch.countDown();
                     }
-                } finally {
-                    latch.countDown();
-                }
-            });
+                });
+            }
+
+            latch.await();
+            var durationMs = (System.nanoTime() - startNano) / 1_000_000.0;
+            executor.shutdown();
+
+            double opsPerSecond = (numRequests / durationMs) * 1000.0;
+
+            System.out.println("\n=================================================");
+            System.out.println("HIGH-VOLUME CONCURRENT THROUGHPUT PERFORMANCE");
+            System.out.println("=================================================");
+            System.out.printf("Total Requests Processed : %d\n", numRequests);
+            System.out.printf("Availability Read Queries: %d\n", readSuccessCount.get());
+            System.out.printf("Successful Bookings      : %d\n", successfulBookings.get());
+            System.out.printf("Rejected/Failed Bookings : %d\n", failedBookings.get());
+            System.out.printf("Total Execution Time     : %.2f ms\n", durationMs);
+            System.out.printf("Average Latency per Req  : %.3f ms\n", durationMs / numRequests);
+            System.out.printf("Throughput               : %.2f req/sec\n", opsPerSecond);
+            System.out.println("=================================================\n");
+
+            Assertions.assertTrue(opsPerSecond > 1000.0, "Throughput should easily exceed 1000 req/sec");
+        } finally {
+            System.clearProperty("benchmark.active");
         }
-
-        latch.await();
-        var durationMs = (System.nanoTime() - startNano) / 1_000_000.0;
-        executor.shutdown();
-
-        double opsPerSecond = (numRequests / durationMs) * 1000.0;
-
-        System.out.println("\n=================================================");
-        System.out.println("HIGH-VOLUME CONCURRENT THROUGHPUT PERFORMANCE");
-        System.out.println("=================================================");
-        System.out.printf("Total Requests Processed : %d\n", numRequests);
-        System.out.printf("Availability Read Queries: %d\n", readSuccessCount.get());
-        System.out.printf("Successful Bookings      : %d\n", successfulBookings.get());
-        System.out.printf("Rejected/Failed Bookings : %d\n", failedBookings.get());
-        System.out.printf("Total Execution Time     : %.2f ms\n", durationMs);
-        System.out.printf("Average Latency per Req  : %.3f ms\n", durationMs / numRequests);
-        System.out.printf("Throughput               : %.2f req/sec\n", opsPerSecond);
-        System.out.println("=================================================\n");
-
-        Assertions.assertTrue(opsPerSecond > 1000.0, "Throughput should easily exceed 1000 req/sec");
     }
 }

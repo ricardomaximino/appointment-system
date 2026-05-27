@@ -18,11 +18,11 @@ public class AppointmentSlotAvailabilityValidator {
         if (slot == null) {
             throw new IllegalArgumentException("Slot cannot be null");
         }
-        Doctor doctor = slot.doctor();
-        LocalDateTime startDateTime = slot.dateTime();
+        Doctor doctor = slot.getDoctor();
+        LocalDateTime startDateTime = slot.getDateTime();
         LocalDate appointmentDate = startDateTime.toLocalDate();
         LocalTime startTime = startDateTime.toLocalTime();
-        LocalTime endTime = startTime.plus(slot.type().getDuration());
+        LocalTime endTime = startTime.plus(slot.getType().getDuration());
 
         // 1. Check if the company is closed
         if (companyClosedDates.contains(appointmentDate)) {
@@ -31,17 +31,17 @@ public class AppointmentSlotAvailabilityValidator {
 
         // 2. Resolve active shifts for the day (prioritize specific dates over weekly recurring schedules)
         List<TimeRange> shifts = null;
-        if (doctor.specificDatesAvailability() != null && doctor.specificDatesAvailability().containsKey(appointmentDate)) {
-            shifts = doctor.specificDatesAvailability().get(appointmentDate);
+        if (doctor.getSpecificDatesAvailability() != null && doctor.getSpecificDatesAvailability().containsKey(appointmentDate)) {
+            shifts = doctor.getSpecificDatesAvailability().get(appointmentDate);
         } else {
             DayOfWeek dayOfWeek = startDateTime.getDayOfWeek();
-            if (doctor.weeklyAvailability() != null && doctor.weeklyAvailability().containsKey(dayOfWeek)) {
-                shifts = doctor.weeklyAvailability().get(dayOfWeek);
+            if (doctor.getWeeklyAvailability() != null && doctor.getWeeklyAvailability().containsKey(dayOfWeek)) {
+                shifts = doctor.getWeeklyAvailability().get(dayOfWeek);
             }
         }
 
         if (shifts == null || shifts.isEmpty()) {
-            throw new IllegalStateException("Appointment cannot be scheduled: Doctor %s does not work on %s".formatted(doctor.name(), appointmentDate));
+            throw new IllegalStateException("Appointment cannot be scheduled: Doctor %s does not work on %s".formatted(doctor.getName(), appointmentDate));
         }
 
         // 3. Check doctor's working shifts (must fall fully within at least one working shift)
@@ -55,7 +55,7 @@ public class AppointmentSlotAvailabilityValidator {
 
         if (!fitsInShift) {
             throw new IllegalStateException("Appointment cannot be scheduled: Desired time %s - %s is outside Doctor %s's working shifts for %s".formatted(
-                    startTime, endTime, doctor.name(), appointmentDate));
+                    startTime, endTime, doctor.getName(), appointmentDate));
         }
     }
 }

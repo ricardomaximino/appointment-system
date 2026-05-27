@@ -12,25 +12,25 @@ public class CalendarConsolePrinter {
 
     public static void printDayCalendar(Doctor doctor, LocalDate date, List<LocalDateTime> availableSlots, Set<AppointmentSlot> allBookedSlots) {
         System.out.println("\n+-------------------------------------------------------------+");
-        System.out.printf("|  DAILY SCHEDULE FOR %-40s|\n", doctor.name() + " - " + date + " (" + date.getDayOfWeek() + ")");
+        System.out.printf("|  DAILY SCHEDULE FOR %-40s|\n", doctor.getName() + " - " + date + " (" + date.getDayOfWeek() + ")");
         System.out.println("+-------------------------------------------------------------+");
         System.out.println("| Time Slot | Status                                          |");
         System.out.println("+-----------+-------------------------------------------------+");
         
         List<TimeRange> shifts = null;
-        if (doctor.specificDatesAvailability() != null && doctor.specificDatesAvailability().containsKey(date)) {
-            shifts = doctor.specificDatesAvailability().get(date);
+        if (doctor.getSpecificDatesAvailability() != null && doctor.getSpecificDatesAvailability().containsKey(date)) {
+            shifts = doctor.getSpecificDatesAvailability().get(date);
         } else {
             DayOfWeek dayOfWeek = date.getDayOfWeek();
-            if (doctor.weeklyAvailability() != null && doctor.weeklyAvailability().containsKey(dayOfWeek)) {
-                shifts = doctor.weeklyAvailability().get(dayOfWeek);
+            if (doctor.getWeeklyAvailability() != null && doctor.getWeeklyAvailability().containsKey(dayOfWeek)) {
+                shifts = doctor.getWeeklyAvailability().get(dayOfWeek);
             }
         }
         
         if (shifts == null || shifts.isEmpty()) {
             System.out.println("|                   OFF - NO ACTIVE SHIFTS                    |");
         } else {
-            long stepMinutes = doctor.appointmentTypes().stream()
+            long stepMinutes = doctor.getAppointmentTypes().stream()
                     .mapToLong(t -> t.getDuration().toMinutes())
                     .min()
                     .orElse(30);
@@ -41,9 +41,9 @@ public class CalendarConsolePrinter {
                     LocalDateTime candidateStart = date.atTime(time);
                     
                     boolean isBooked = allBookedSlots.stream().anyMatch(bs -> 
-                        bs.doctor().doctorId().equals(doctor.doctorId()) &&
-                        (bs.dateTime().equals(candidateStart) || 
-                         (!candidateStart.isBefore(bs.dateTime()) && candidateStart.isBefore(bs.dateTime().plus(bs.type().getDuration()))))
+                        bs.getDoctor().getDoctorId().equals(doctor.getDoctorId()) &&
+                        (bs.getDateTime().equals(candidateStart) || 
+                         (!candidateStart.isBefore(bs.getDateTime()) && candidateStart.isBefore(bs.getDateTime().plus(bs.getType().getDuration()))))
                     );
                     
                     String status = isBooked ? "[ BOOKED ]" : "[ AVAILABLE ]";
@@ -59,7 +59,7 @@ public class CalendarConsolePrinter {
     public static void printWeekCalendar(Doctor doctor, LocalDate date, List<LocalDateTime> weeklyAvailableSlots) {
         LocalDate startOfWeek = date.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         System.out.println("\n+----------------------------------------------------------------------------------------------------+");
-        System.out.printf("|  WEEKLY OVERVIEW FOR %-76s  |\n", doctor.name() + " - Week of " + startOfWeek);
+        System.out.printf("|  WEEKLY OVERVIEW FOR %-76s  |\n", doctor.getName() + " - Week of " + startOfWeek);
         System.out.println("+----------------------------------------------------------------------------------------------------+");
         
         StringBuilder header = new StringBuilder("|");
@@ -74,10 +74,10 @@ public class CalendarConsolePrinter {
                 .count();
             
             boolean works = false;
-            if (doctor.specificDatesAvailability() != null && doctor.specificDatesAvailability().containsKey(current)) {
-                works = !doctor.specificDatesAvailability().get(current).isEmpty();
+            if (doctor.getSpecificDatesAvailability() != null && doctor.getSpecificDatesAvailability().containsKey(current)) {
+                works = !doctor.getSpecificDatesAvailability().get(current).isEmpty();
             } else {
-                works = doctor.weeklyAvailability() != null && doctor.weeklyAvailability().containsKey(current.getDayOfWeek());
+                works = doctor.getWeeklyAvailability() != null && doctor.getWeeklyAvailability().containsKey(current.getDayOfWeek());
             }
             
             String countLabel = works ? count + " spots" : "OFF";
@@ -95,7 +95,7 @@ public class CalendarConsolePrinter {
         int length = firstDay.lengthOfMonth();
         
         System.out.println("\n+-----------------------------------------------------------------------------+");
-        System.out.printf("|  MONTHLY CALENDAR FOR %-51s  |\n", doctor.name() + " - " + Month.of(month) + " " + year);
+        System.out.printf("|  MONTHLY CALENDAR FOR %-51s  |\n", doctor.getName() + " - " + Month.of(month) + " " + year);
         System.out.println("+-----------------------------------------------------------------------------+");
         System.out.println("|   SUN    |   MON    |   TUE    |   WED    |   THU    |   FRI    |   SAT    |");
         System.out.println("+----------+----------+----------+----------+----------+----------+----------+");
@@ -116,10 +116,10 @@ public class CalendarConsolePrinter {
             LocalDate curDate = LocalDate.of(year, month, currentDay);
             long count = monthlyAvailableSlots.stream().filter(dt -> dt.toLocalDate().equals(curDate)).count();
             boolean works = false;
-            if (doctor.specificDatesAvailability() != null && doctor.specificDatesAvailability().containsKey(curDate)) {
-                works = !doctor.specificDatesAvailability().get(curDate).isEmpty();
+            if (doctor.getSpecificDatesAvailability() != null && doctor.getSpecificDatesAvailability().containsKey(curDate)) {
+                works = !doctor.getSpecificDatesAvailability().get(curDate).isEmpty();
             } else {
-                works = doctor.weeklyAvailability() != null && doctor.weeklyAvailability().containsKey(curDate.getDayOfWeek());
+                works = doctor.getWeeklyAvailability() != null && doctor.getWeeklyAvailability().containsKey(curDate.getDayOfWeek());
             }
             String label = works ? count + " spots" : "OFF";
             firstRowSlots.append(String.format(" %-8s |", label));
@@ -141,10 +141,10 @@ public class CalendarConsolePrinter {
                 LocalDate curDate = LocalDate.of(year, month, currentDay);
                 long count = monthlyAvailableSlots.stream().filter(dt -> dt.toLocalDate().equals(curDate)).count();
                 boolean works = false;
-                if (doctor.specificDatesAvailability() != null && doctor.specificDatesAvailability().containsKey(curDate)) {
-                    works = !doctor.specificDatesAvailability().get(curDate).isEmpty();
+                if (doctor.getSpecificDatesAvailability() != null && doctor.getSpecificDatesAvailability().containsKey(curDate)) {
+                    works = !doctor.getSpecificDatesAvailability().get(curDate).isEmpty();
                 } else {
-                    works = doctor.weeklyAvailability() != null && doctor.weeklyAvailability().containsKey(curDate.getDayOfWeek());
+                    works = doctor.getWeeklyAvailability() != null && doctor.getWeeklyAvailability().containsKey(curDate.getDayOfWeek());
                 }
                 String label = works ? count + " spots" : "OFF";
                 rowSlots.append(String.format(" %-8s |", label));
@@ -165,7 +165,7 @@ public class CalendarConsolePrinter {
 
     public static void printYearCalendar(Doctor doctor, int year, List<LocalDateTime> yearlyAvailableSlots) {
         System.out.println("\n+---------------------------------------+");
-        System.out.printf("|  YEARLY OVERVIEW FOR %-16s |\n", doctor.name() + " - " + year);
+        System.out.printf("|  YEARLY OVERVIEW FOR %-16s |\n", doctor.getName() + " - " + year);
         System.out.println("+---------------------------------------+");
         System.out.println("| Month     | Available Slots           |");
         System.out.println("+-----------+---------------------------+");
