@@ -2,6 +2,7 @@ package es.brasatech.medpulse.service;
 
 import es.brasatech.medpulse.domain.AppointmentSlot;
 import es.brasatech.medpulse.domain.AppointmentType;
+import es.brasatech.medpulse.domain.Doctor;
 import es.brasatech.medpulse.domain.Patient;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 class ConcurrentAppointmentServiceTest {
 
     private final ConcurrentAppointmentService appointmentService = new ConcurrentAppointmentService();
+    private final DomainDataService domainDataService = DbContext.getContext().getBean(DomainDataService.class);
+
+    private Doctor getDoctor(String doctorId) {
+        return domainDataService.findDoctorById(doctorId);
+    }
+
+    private Patient getPatient(String patientId) {
+        return domainDataService.findPatientById(patientId);
+    }
 
     private static LocalDate getNextDayOfWeek(DayOfWeek day) {
         LocalDate date = LocalDate.now().plusDays(1);
@@ -29,7 +39,7 @@ class ConcurrentAppointmentServiceTest {
         appointmentService.clearBookings();
 
         var doctorId = "doc1";
-        var patient = appointmentService.patients.get("pat1");
+        var patient = getPatient("pat1");
 
         // Dynamically obtain next Monday (Dr. House works M, W, F 09:00 - 13:00, 14:00 - 17:00)
         LocalDate nextMonday = getNextDayOfWeek(DayOfWeek.MONDAY);
@@ -40,8 +50,13 @@ class ConcurrentAppointmentServiceTest {
         boolean success = appointmentService.registerAppointmentSlot(slot, patient);
 
         Assertions.assertTrue(success, "First booking should succeed");
-        Assertions.assertEquals(1, appointmentService.slots.size(), "There should be 1 booking in the system");
-        Assertions.assertEquals(patient, appointmentService.slots.get(slot));
+        Assertions.assertEquals(1, domainDataService.getAppointmentCount(), "There should be 1 booking in the system");
+
+        var bookedOpt = domainDataService.findBookedAppointmentsForDoctor(doctorId).stream()
+                .filter(app -> app.getDateTime().equals(dateTime))
+                .findFirst();
+        Assertions.assertTrue(bookedOpt.isPresent(), "Appointment should be found in database");
+        Assertions.assertEquals(patient.getPatientId(), bookedOpt.get().getPatient().getPatientId(), "Patient should match");
     }
 
     @Test
@@ -50,8 +65,8 @@ class ConcurrentAppointmentServiceTest {
 
         var doc1 = "doc1";
         var doc2 = "doc2";
-        var pat1 = appointmentService.patients.get("pat1");
-        var pat2 = appointmentService.patients.get("pat2");
+        var pat1 = getPatient("pat1");
+        var pat2 = getPatient("pat2");
 
         LocalDate nextMonday = getNextDayOfWeek(DayOfWeek.MONDAY);
         LocalDate nextTuesday = getNextDayOfWeek(DayOfWeek.TUESDAY);
@@ -61,15 +76,15 @@ class ConcurrentAppointmentServiceTest {
         Assertions.assertTrue(appointmentService.registerAppointmentSlot(slot1, pat1));
 
         // 1. Same doctor, exact same slot -> Fail
-        var slotDuplicate = new AppointmentSlot(appointmentService.doctors.get(doc1), nextMonday.atTime(10, 0), AppointmentType.SHORT);
+        var slotDuplicate = new AppointmentSlot(getDoctor(doc1), nextMonday.atTime(10, 0), AppointmentType.SHORT);
         Assertions.assertFalse(appointmentService.registerAppointmentSlot(slotDuplicate, pat2), "Duplicate booking should fail");
 
         // 2. Same doctor, overlapping slot starting inside the existing one -> Fail (10:15 to 10:45)
-        var slotOverlappingStart = new AppointmentSlot(appointmentService.doctors.get(doc1), nextMonday.atTime(10, 15), AppointmentType.SHORT);
+        var slotOverlappingStart = new AppointmentSlot(getDoctor(doc1), nextMonday.atTime(10, 15), AppointmentType.SHORT);
         Assertions.assertFalse(appointmentService.registerAppointmentSlot(slotOverlappingStart, pat2), "Overlapping booking (start inside) should fail");
 
         // 3. Same doctor, overlapping slot wrapping the existing one -> Fail (09:45 to 10:45)
-        var slotOverlappingWrap = new AppointmentSlot(appointmentService.doctors.get(doc1), nextMonday.atTime(9, 45), AppointmentType.MEDIUM);
+        var slotOverlappingWrap = new AppointmentSlot(getDoctor(doc1), nextMonday.atTime(9, 45), AppointmentType.MEDIUM);
         Assertions.assertFalse(appointmentService.registerAppointmentSlot(slotOverlappingWrap, pat2), "Overlapping booking (wrapping existing) should fail");
 
         // 4. Same doctor, adjacent slot -> Succeed (10:30 to 11:00)
@@ -122,7 +137,7 @@ class ConcurrentAppointmentServiceTest {
     void testCompanyClosedDatesRestriction() {
         // Dynamically fetch next Saturday, add it to closed dates, and assert booking doc2 fails
         LocalDate nextSaturday = getNextDayOfWeek(DayOfWeek.SATURDAY);
-        appointmentService.companyClosedDates.add(nextSaturday);
+        domainDataService.addCompanyClosedDate(nextSaturday);
 
         try {
             Assertions.assertThrows(IllegalStateException.class, () -> {
@@ -134,7 +149,7 @@ class ConcurrentAppointmentServiceTest {
             }, "Booking on a company closed date should fail");
         } finally {
             // Cleanup closed date to not pollute other tests
-            appointmentService.companyClosedDates.remove(nextSaturday);
+            domainDataService.removeCompanyClosedDate(nextSaturday);
         }
     }
 
@@ -268,7 +283,7 @@ class ConcurrentAppointmentServiceTest {
         System.out.println("CONCURRENT BOOKING TEST RESULTS (ConcurrentService)");
         System.out.println("Total requests: " + numThreads);
         System.out.println("Successful bookings: " + successCount.get());
-        System.out.println("Bookings in map: " + appointmentService.slots.size());
+        System.out.println("Bookings in map: " + domainDataService.getAppointmentCount());
         System.out.println("=================================================");
 
         // In our thread-safe system, we expect successCount to be exactly 1!
@@ -287,10 +302,10 @@ class ConcurrentAppointmentServiceTest {
             var successfulBookings = new AtomicInteger(0);
             var failedBookings = new AtomicInteger(0);
             var readSuccessCount = new AtomicInteger(0);
-            
+
             LocalDate nextMonday = getNextDayOfWeek(DayOfWeek.MONDAY);
             LocalDate nextWednesday = getNextDayOfWeek(DayOfWeek.WEDNESDAY);
-            
+
             var startNano = System.nanoTime();
             var latch = new CountDownLatch(numRequests);
 
@@ -312,7 +327,7 @@ class ConcurrentAppointmentServiceTest {
                             int hour = 9 + (index % 8); // 9:00 to 16:00
                             var dateTime = targetDate.atTime(hour, 0);
                             var patient = new Patient("pat_" + index, "Patient " + index);
-                            
+
                             try {
                                 var slot = appointmentService.createAppointmentSlot(dateTime, doctorId, AppointmentType.SHORT);
                                 if (appointmentService.registerAppointmentSlot(slot, patient)) {

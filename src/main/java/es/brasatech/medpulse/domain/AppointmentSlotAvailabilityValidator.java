@@ -1,5 +1,6 @@
 package es.brasatech.medpulse.domain;
 
+import es.brasatech.medpulse.service.DomainDataService;
 import lombok.RequiredArgsConstructor;
 
 import java.time.DayOfWeek;
@@ -7,12 +8,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Set;
 
 @RequiredArgsConstructor
 public class AppointmentSlotAvailabilityValidator {
 
-    private final Set<LocalDate> companyClosedDates;
+    private final DomainDataService domainDataService;
 
     public void validate(AppointmentSlot slot) {
         if (slot == null) {
@@ -25,7 +25,7 @@ public class AppointmentSlotAvailabilityValidator {
         LocalTime endTime = startTime.plus(slot.getType().getDuration());
 
         // 1. Check if the company is closed
-        if (companyClosedDates.contains(appointmentDate)) {
+        if (domainDataService.isCompanyClosed(appointmentDate)) {
             throw new IllegalStateException("Appointment cannot be scheduled: Company is closed on " + appointmentDate);
         }
 

@@ -1,8 +1,6 @@
 package es.brasatech.medpulse.service;
 
-import es.brasatech.medpulse.domain.AppointmentSlot;
-import es.brasatech.medpulse.domain.AppointmentType;
-import es.brasatech.medpulse.domain.Patient;
+import es.brasatech.medpulse.domain.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -18,6 +16,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class AppointmentServiceTest {
 
     private final SimpleAppointmentService appointmentService = new SimpleAppointmentService();
+    private final DomainDataService domainDataService = DbContext.getContext().getBean(DomainDataService.class);
+
+    private Doctor getDoctor(String doctorId) {
+        return domainDataService.findDoctorById(doctorId);
+    }
+
+    private Patient getPatient(String patientId) {
+        return domainDataService.findPatientById(patientId);
+    }
 
     private static LocalDate getNextDayOfWeek(DayOfWeek day) {
         LocalDate date = LocalDate.now().plusDays(1);
@@ -32,7 +39,7 @@ class AppointmentServiceTest {
         appointmentService.clearBookings();
 
         var doctorId = "doc1";
-        var patient = appointmentService.patients.get("pat1");
+        var patient = getPatient("pat1");
 
         // Dynamically obtain next Monday (Dr. House works M, W, F 09:00 - 13:00, 14:00 - 17:00)
         LocalDate nextMonday = getNextDayOfWeek(DayOfWeek.MONDAY);
@@ -43,8 +50,13 @@ class AppointmentServiceTest {
         boolean success = appointmentService.registerAppointmentSlot(slot, patient);
 
         Assertions.assertTrue(success, "First booking should succeed");
-        Assertions.assertEquals(1, appointmentService.slots.size(), "There should be 1 booking in the system");
-        Assertions.assertEquals(patient, appointmentService.slots.get(slot));
+        Assertions.assertEquals(1, domainDataService.getAppointmentCount(), "There should be 1 booking in the system");
+
+        var bookedOpt = domainDataService.findBookedAppointmentsForDoctor(doctorId).stream()
+                .filter(app -> app.getDateTime().equals(dateTime))
+                .findFirst();
+        Assertions.assertTrue(bookedOpt.isPresent(), "Appointment should be found in database");
+        Assertions.assertEquals(patient.getPatientId(), bookedOpt.get().getPatient().getPatientId(), "Patient should match");
     }
 
     @Test
@@ -53,8 +65,8 @@ class AppointmentServiceTest {
 
         var doc1 = "doc1";
         var doc2 = "doc2";
-        var pat1 = appointmentService.patients.get("pat1");
-        var pat2 = appointmentService.patients.get("pat2");
+        var pat1 = getPatient("pat1");
+        var pat2 = getPatient("pat2");
 
         LocalDate nextMonday = getNextDayOfWeek(DayOfWeek.MONDAY);
         LocalDate nextTuesday = getNextDayOfWeek(DayOfWeek.TUESDAY);
@@ -64,15 +76,15 @@ class AppointmentServiceTest {
         Assertions.assertTrue(appointmentService.registerAppointmentSlot(slot1, pat1));
 
         // 1. Same doctor, exact same slot -> Fail
-        var slotDuplicate = new AppointmentSlot(appointmentService.doctors.get(doc1), nextMonday.atTime(10, 0), AppointmentType.SHORT);
+        var slotDuplicate = new AppointmentSlot(getDoctor(doc1), nextMonday.atTime(10, 0), AppointmentType.SHORT);
         Assertions.assertFalse(appointmentService.registerAppointmentSlot(slotDuplicate, pat2), "Duplicate booking should fail");
 
         // 2. Same doctor, overlapping slot starting inside the existing one -> Fail (10:15 to 10:45)
-        var slotOverlappingStart = new AppointmentSlot(appointmentService.doctors.get(doc1), nextMonday.atTime(10, 15), AppointmentType.SHORT);
+        var slotOverlappingStart = new AppointmentSlot(getDoctor(doc1), nextMonday.atTime(10, 15), AppointmentType.SHORT);
         Assertions.assertFalse(appointmentService.registerAppointmentSlot(slotOverlappingStart, pat2), "Overlapping booking (start inside) should fail");
 
         // 3. Same doctor, overlapping slot wrapping the existing one -> Fail (09:45 to 10:45)
-        var slotOverlappingWrap = new AppointmentSlot(appointmentService.doctors.get(doc1), nextMonday.atTime(9, 45), AppointmentType.MEDIUM);
+        var slotOverlappingWrap = new AppointmentSlot(getDoctor(doc1), nextMonday.atTime(9, 45), AppointmentType.MEDIUM);
         Assertions.assertFalse(appointmentService.registerAppointmentSlot(slotOverlappingWrap, pat2), "Overlapping booking (wrapping existing) should fail");
 
         // 4. Same doctor, adjacent slot -> Succeed (10:30 to 11:00)
@@ -125,7 +137,7 @@ class AppointmentServiceTest {
     void testCompanyClosedDatesRestriction() {
         // Dynamically fetch next Saturday, add it to closed dates, and assert booking doc2 fails
         LocalDate nextSaturday = getNextDayOfWeek(DayOfWeek.SATURDAY);
-        appointmentService.companyClosedDates.add(nextSaturday);
+        domainDataService.addCompanyClosedDate(nextSaturday);
 
         try {
             assertThrows(IllegalStateException.class, () -> {
@@ -137,7 +149,7 @@ class AppointmentServiceTest {
             }, "Booking on a company closed date should fail");
         } finally {
             // Cleanup closed date to not pollute other tests
-            appointmentService.companyClosedDates.remove(nextSaturday);
+            domainDataService.removeCompanyClosedDate(nextSaturday);
         }
     }
 
@@ -271,7 +283,7 @@ class AppointmentServiceTest {
         System.out.println("CONCURRENT BOOKING TEST RESULTS");
         System.out.println("Total requests: " + numThreads);
         System.out.println("Successful bookings: " + successCount.get());
-        System.out.println("Bookings in map: " + appointmentService.slots.size());
+        System.out.println("Bookings in map: " + domainDataService.getAppointmentCount());
         System.out.println("=================================================");
 
         // In our naive thread-unsafe system, we expect successCount to be > 1 due to the race condition!
@@ -297,7 +309,7 @@ class AppointmentServiceTest {
         Assertions.assertFalse(hasLunchHourSlot, "No slot should be available during lunch break");
 
         // Register one booking: 10:00 - 11:00 (MEDIUM)
-        var patient = appointmentService.patients.get("pat1");
+        var patient = getPatient("pat1");
         var slotToBook = appointmentService.createAppointmentSlot(nextMonday.atTime(10, 0), doctorId, AppointmentType.MEDIUM);
         Assertions.assertTrue(appointmentService.registerAppointmentSlot(slotToBook, patient));
 
@@ -307,7 +319,7 @@ class AppointmentServiceTest {
         // Verify the booked starting points (10:00 and 10:30) fall inside [10:00, 11:00) and are excluded
         Assertions.assertFalse(availableSlotsAfter.contains(nextMonday.atTime(10, 0)), "10:00 start time should be excluded");
         Assertions.assertFalse(availableSlotsAfter.contains(nextMonday.atTime(10, 30)), "10:30 start time should be excluded");
-        
+
         // Verify surrounding slots are free
         Assertions.assertTrue(availableSlotsAfter.contains(nextMonday.atTime(9, 30)), "09:30 should be available");
         Assertions.assertTrue(availableSlotsAfter.contains(nextMonday.atTime(11, 0)), "11:00 should be available");
