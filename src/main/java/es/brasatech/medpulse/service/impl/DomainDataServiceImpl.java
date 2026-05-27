@@ -91,4 +91,44 @@ public class DomainDataServiceImpl implements DomainDataService {
     public long getAppointmentCount() {
         return appointmentRepository.count();
     }
+
+    // Web Application support implementations
+    @Override
+    @Transactional(readOnly = true)
+    public List<Doctor> findAllDoctors() {
+        return doctorRepository.findAll().stream()
+                .map(doctorMapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Patient> findAllPatients() {
+        return patientRepository.findAll().stream()
+                .map(patientMapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Appointment> findAllBookedAppointments() {
+        return appointmentRepository.findAll().stream()
+                .map(appointmentMapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void deleteAppointment(Long id) {
+        appointmentRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LocalDate> findAllCompanyClosedDates() {
+        return companyClosedDateRepository.findAll().stream()
+                .map(CompanyClosedDateEntity::getClosedDate)
+                .sorted()
+                .collect(Collectors.toList());
+    }
 }

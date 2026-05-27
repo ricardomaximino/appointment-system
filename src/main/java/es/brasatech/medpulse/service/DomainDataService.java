@@ -15,4 +15,11 @@ public interface DomainDataService {
     List<Appointment> findBookedAppointmentsForDoctor(String doctorId);
     void saveAppointment(AppointmentSlot slot, Patient patient);
     long getAppointmentCount();
+
+    // Web Application support methods
+    List<Doctor> findAllDoctors();
+    List<Patient> findAllPatients();
+    List<Appointment> findAllBookedAppointments();
+    void deleteAppointment(Long id);
+    List<LocalDate> findAllCompanyClosedDates();
 }

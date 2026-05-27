@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedPulse - Book Appointment</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --primary-gradient: linear-gradient(135deg, #0d6efd, #0dcaf0);
+            --bg-soft: #f8f9fc;
+            --card-shadow: 0 10px 30px rgba(13, 110, 253, 0.04), 0 1px 8px rgba(0, 0, 0, 0.02);
+            --font-family-sans-serif: 'Plus Jakarta Sans', sans-serif;
+            --font-family-title: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-soft);
+            font-family: var(--font-family-sans-serif);
+            color: #2b303a;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-family-title);
+            font-weight: 600;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.8) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-brand {
+            font-family: var(--font-family-title);
+            font-weight: 700;
+            font-size: 1.5rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-link {
+            font-weight: 500;
+            color: #4a5568 !important;
+            transition: color 0.2s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary-color) !important;
+        }
+
+        .booking-card {
+            background: white;
+            border-radius: 24px;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            box-shadow: var(--card-shadow);
+            padding: 2.5rem;
+        }
+
+        .form-control, .form-select {
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+        }
+
+        .slot-pill {
+            background-color: #f1f3f9;
+            color: #2b303a;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            border-radius: 12px;
+            padding: 0.75rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .slot-pill:hover {
+            background-color: rgba(13, 110, 253, 0.08);
+            color: var(--primary-color);
+        }
+
+        .slot-pill.active {
+            background: var(--primary-gradient);
+            color: white !important;
+            border-color: transparent;
+            box-shadow: 0 8px 20px rgba(13, 110, 253, 0.25);
+        }
+
+        .no-slots-alert {
+            background-color: #fff8f8;
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .btn-premium {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.85rem 1.5rem;
+            font-weight: 600;
+            transition: opacity 0.2s ease;
+        }
+
+        .btn-premium:hover {
+            color: white;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg sticky-top navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fa-solid fa-heart-pulse me-2"></i>MedPulse
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="fa-solid fa-chart-line me-1"></i>Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/book"><i class="fa-solid fa-calendar-plus me-1"></i>Book Appointment</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/appointments"><i class="fa-solid fa-calendar-check me-1"></i>Appointments</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/closed-dates"><i class="fa-solid fa-building-circle-xmark me-1"></i>Closed Dates</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content Container -->
+    <div class="container my-5" style="max-width: 900px;">
+        <h1 class="mb-4 text-center">Schedule Medical Appointment</h1>
+
+        <!-- Error Alert -->
+        <div th:if="${errorMessage}" class="alert alert-danger d-flex align-items-center mb-4 border-0 shadow-sm" role="alert" style="border-radius:12px;">
+            <i class="fa-solid fa-triangle-exclamation me-3 fs-4"></i>
+            <div th:text="${errorMessage}">Error message goes here</div>
+        </div>
+
+        <div class="booking-card">
+            <form id="bookingForm" action="/book" method="POST">
+                
+                <!-- Doctor Selection -->
+                <div class="mb-4">
+                    <label for="doctorId" class="form-label">Select Medical Specialist</label>
+                    <select class="form-select" id="doctorId" name="doctorId" required>
+                        <option value="" disabled selected>-- Select a Doctor --</option>
+                        <option th:each="doc : ${doctors}" th:value="${doc.doctorId}" 
+                                th:text="${doc.name + ' - (' + doc.appointmentTypes + ')'}"></option>
+                    </select>
+                </div>
+
+                <!-- Date Picker -->
+                <div class="mb-4">
+                    <label for="date" class="form-label">Appointment Date</label>
+                    <input type="date" class="form-control" id="date" name="date" required>
+                </div>
+
+                <!-- Dynamic Slots Selection Section -->
+                <div id="slotsSection" class="mb-4" style="display: none;">
+                    <label class="form-label">Select Available Time Slot</label>
+                    
+                    <!-- Hidden Time Value -->
+                    <input type="hidden" id="selectedTime" name="time" required>
+
+                    <!-- Dynamically Generated Pills Grid -->
+                    <div id="slotsGrid" class="row row-cols-3 g-3">
+                        <!-- Loaded dynamically via JavaScript -->
+                    </div>
+
+                    <!-- No Slots Fallback -->
+                    <div id="noSlotsAlert" class="no-slots-alert mt-2" style="display: none;">
+                        <i class="fa-solid fa-circle-exclamation fs-1 mb-2 d-block"></i>
+                        <h5>No Slots Available</h5>
+                        <p class="text-muted small mb-0">The doctor is either fully booked, not working, or the clinic is closed on this date.</p>
+                    </div>
+                </div>
+
+                <!-- Patient & Appointment Type Group -->
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label for="patientId" class="form-label">Select Patient Profile</label>
+                        <select class="form-select" id="patientId" name="patientId" required>
+                            <option value="" disabled selected>-- Select a Patient --</option>
+                            <option th:each="pat : ${patients}" th:value="${pat.patientId}" th:text="${pat.name}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="appointmentType" class="form-label">Appointment Type</label>
+                        <select class="form-select" id="appointmentType" name="appointmentType" required>
+                            <option value="" disabled selected>-- Appointment Type --</option>
+                            <option th:each="type : ${appointmentTypes}" th:value="${type}" 
+                                    th:text="${type + ' (' + type.duration.toMinutes() + ' mins)'}"></option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submitBtn" class="btn btn-premium w-100 py-3" disabled>
+                    <i class="fa-solid fa-circle-check me-2"></i>Confirm Appointment Booking
+                </button>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Dynamic Slot Fetcher Script -->
+    <script>
+        const doctorSelect = document.getElementById('doctorId');
+        const dateInput = document.getElementById('date');
+        const slotsSection = document.getElementById('slotsSection');
+        const slotsGrid = document.getElementById('slotsGrid');
+        const noSlotsAlert = document.getElementById('noSlotsAlert');
+        const selectedTimeInput = document.getElementById('selectedTime');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // Set min date to today so they can't book in the past
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
+
+        function checkFormState() {
+            const doctorSelected = doctorSelect.value !== '';
+            const dateSelected = dateInput.value !== '';
+            
+            if (doctorSelected && dateSelected) {
+                fetchAvailableSlots();
+            } else {
+                slotsSection.style.display = 'none';
+            }
+        }
+
+        async function fetchAvailableSlots() {
+            const doctorId = doctorSelect.value;
+            const date = dateInput.value;
+
+            // Show section, load spinner
+            slotsSection.style.display = 'block';
+            slotsGrid.innerHTML = '<div class="col-12 text-center text-primary py-3"><i class="fa-solid fa-spinner fa-spin fs-3 me-2"></i>Loading live slots...</div>';
+            noSlotsAlert.style.display = 'none';
+            selectedTimeInput.value = '';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch(`/api/slots?doctorId=${doctorId}&date=${date}`);
+                if (!response.ok) throw new Error('Network error');
+                
+                const slots = await response.json();
+                slotsGrid.innerHTML = '';
+                
+                if (slots && slots.length > 0) {
+                    slotsGrid.style.display = 'flex';
+                    noSlotsAlert.style.display = 'none';
+
+                    slots.forEach(time => {
+                        // Create column
+                        const col = document.createElement('div');
+                        col.className = 'col';
+                        
+                        // Create pill
+                        const pill = document.createElement('div');
+                        pill.className = 'slot-pill';
+                        pill.innerText = time;
+                        
+                        // Click behavior
+                        pill.addEventListener('click', () => {
+                            // Deactivate other pills
+                            document.querySelectorAll('.slot-pill').forEach(p => p.classList.remove('active'));
+                            // Activate clicked pill
+                            pill.classList.add('active');
+                            // Update input & form state
+                            selectedTimeInput.value = time;
+                            submitBtn.disabled = false;
+                        });
+                        
+                        col.appendChild(pill);
+                        slotsGrid.appendChild(col);
+                    });
+                } else {
+                    slotsGrid.style.display = 'none';
+                    noSlotsAlert.style.display = 'block';
+                }
+            } catch (err) {
+                console.error(err);
+                slotsGrid.innerHTML = '<div class="col-12 text-center text-danger py-3"><i class="fa-solid fa-triangle-exclamation me-2"></i>Failed to load slots. Please retry.</div>';
+            }
+        }
+
+        doctorSelect.addEventListener('change', checkFormState);
+        dateInput.addEventListener('change', checkFormState);
+    </script>
+</body>
+</html>

@@ -13,6 +13,7 @@ import java.util.Objects;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Appointment {
+    private Long id;
     private Doctor doctor;
     private Patient patient;
     private LocalDateTime dateTime;
@@ -23,7 +24,8 @@ public class Appointment {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Appointment that = (Appointment) o;
-        return Objects.equals(doctor != null ? doctor.getDoctorId() : null, that.doctor != null ? that.doctor.getDoctorId() : null) &&
+        return Objects.equals(id, that.id) &&
+                Objects.equals(doctor != null ? doctor.getDoctorId() : null, that.doctor != null ? that.doctor.getDoctorId() : null) &&
                 Objects.equals(patient != null ? patient.getPatientId() : null, that.patient != null ? that.patient.getPatientId() : null) &&
                 Objects.equals(dateTime, that.dateTime) &&
                 type == that.type;
@@ -31,6 +33,6 @@ public class Appointment {
 
     @Override
     public int hashCode() {
-        return Objects.hash(doctor != null ? doctor.getDoctorId() : null, patient != null ? patient.getPatientId() : null, dateTime, type);
+        return Objects.hash(id, doctor != null ? doctor.getDoctorId() : null, patient != null ? patient.getPatientId() : null, dateTime, type);
     }
 }

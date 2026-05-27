@@ -23,7 +23,7 @@ public interface AppointmentMapper {
     @Mapping(target = "patient", source = "patient")
     @Mapping(target = "dateTime", source = "dateTime")
     @Mapping(target = "type", source = "type")
-    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "id", source = "id")
     AppointmentEntity toEntity(Appointment appointment);
 
     Appointment toDomain(AppointmentEntity entity);
