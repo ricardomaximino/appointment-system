@@ -12,9 +12,9 @@ public interface AppointmentService {
 
     void clearBookings();
 
-    AppointmentSlot createSimpleAppointmentSlot(LocalDateTime appointmentDateTime, String doctorId, AppointmentType appointmentType);
+    AppointmentSlot createAppointmentSlot(LocalDateTime appointmentDateTime, String doctorId, AppointmentType appointmentType);
 
-    boolean registerSimpleAppointmentSlot(AppointmentSlot slot, Patient patient);
+    boolean registerAppointmentSlot(AppointmentSlot slot, Patient patient);
 
     List<LocalDateTime> getAvailableSlots(String doctorId, LocalDate date);
 

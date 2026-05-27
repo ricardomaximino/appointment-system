@@ -6,58 +6,32 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class SimpleAppointmentService implements AppointmentService {
 
-    public static Map<String, Doctor> doctors = new HashMap<>();
-    public static Map<String, Patient> patients = new HashMap<>();
-    public static Map<AppointmentSlot, Patient> slots = new HashMap<>();
-    public static Set<LocalDate> companyClosedDates = new HashSet<>();
-    public static AppointmentSlotAvailabilityValidator validator = new AppointmentSlotAvailabilityValidator(companyClosedDates);
+    protected Map<String, Doctor> doctors;
+    protected Map<String, Patient> patients;
+    protected Map<AppointmentSlot, Patient> slots;
+    protected Set<LocalDate> companyClosedDates;
+    protected AppointmentSlotAvailabilityValidator validator;
 
-    static {
-        // Initialize dummy doctors with availability schedules (split shifts / lunch breaks)
-        var houseAvailability = Map.of(
-                DayOfWeek.MONDAY, List.of(new TimeRange(LocalTime.of(9, 0), LocalTime.of(13, 0)), new TimeRange(LocalTime.of(14, 0), LocalTime.of(17, 0))),
-                DayOfWeek.WEDNESDAY, List.of(new TimeRange(LocalTime.of(9, 0), LocalTime.of(13, 0)), new TimeRange(LocalTime.of(14, 0), LocalTime.of(17, 0))),
-                DayOfWeek.FRIDAY, List.of(new TimeRange(LocalTime.of(9, 0), LocalTime.of(13, 0)), new TimeRange(LocalTime.of(14, 0), LocalTime.of(17, 0)))
-        );
-        var doc1 = new Doctor("doc1", "Dr. House", List.of(AppointmentType.SHORT, AppointmentType.MEDIUM), houseAvailability);
-
-        var greyAvailability = Map.of(
-                DayOfWeek.TUESDAY, List.of(new TimeRange(LocalTime.of(8, 0), LocalTime.of(12, 0)), new TimeRange(LocalTime.of(13, 0), LocalTime.of(16, 0))),
-                DayOfWeek.THURSDAY, List.of(new TimeRange(LocalTime.of(8, 0), LocalTime.of(12, 0)), new TimeRange(LocalTime.of(13, 0), LocalTime.of(16, 0))),
-                DayOfWeek.SATURDAY, List.of(new TimeRange(LocalTime.of(9, 0), LocalTime.of(12, 0)))
-        );
-        var doc2 = new Doctor("doc2", "Dr. Grey", List.of(AppointmentType.MEDIUM, AppointmentType.LONG), greyAvailability);
-
-        // Seed doc3 (Dr. Strange) with specific date availabilities using dynamic relative dates
-        var strangeAvailability = Map.of(
-                LocalDate.now().plusDays(2), List.of(new TimeRange(LocalTime.of(8, 30), LocalTime.of(12, 0)), new TimeRange(LocalTime.of(17, 0), LocalTime.of(18, 0))),
-                LocalDate.now().plusDays(5), List.of(new TimeRange(LocalTime.of(11, 0), LocalTime.of(17, 0)))
-        );
-        var doc3 = new Doctor("doc3", "Dr. Strange", List.of(AppointmentType.SHORT, AppointmentType.MEDIUM, AppointmentType.LONG), Map.of(), strangeAvailability);
-
-        doctors.put(doc1.doctorId(), doc1);
-        doctors.put(doc2.doctorId(), doc2);
-        doctors.put(doc3.doctorId(), doc3);
-
-        // Initialize dummy patients
-        var pat1 = new Patient("pat1", "John Doe");
-        var pat2 = new Patient("pat2", "Jane Smith");
-        patients.put(pat1.patientId(), pat1);
-        patients.put(pat2.patientId(), pat2);
-
-        // Default company closed date for testing: e.g. 15 days from now
-        companyClosedDates.add(LocalDate.now().plusDays(15));
+    public SimpleAppointmentService() {
+        doctors = InMemoryDataStore.doctors;
+        patients = InMemoryDataStore.patients;
+        slots = InMemoryDataStore.slots;
+        companyClosedDates = InMemoryDataStore.companyClosedDates;
+        validator = new AppointmentSlotAvailabilityValidator(companyClosedDates);
     }
 
     public void clearBookings() {
         slots.clear();
     }
 
-    public AppointmentSlot createSimpleAppointmentSlot(LocalDateTime appointmentDateTime, String doctorId, AppointmentType appointmentType) {
+    public AppointmentSlot createAppointmentSlot(LocalDateTime appointmentDateTime, String doctorId, AppointmentType appointmentType) {
         var doctor = doctors.get(doctorId);
         if (doctor == null) {
             throw new IllegalArgumentException("Doctor not found: " + doctorId);
@@ -70,7 +44,7 @@ public class SimpleAppointmentService implements AppointmentService {
         return slot;
     }
 
-    public boolean registerSimpleAppointmentSlot(AppointmentSlot slot, Patient patient) {
+    public boolean registerAppointmentSlot(AppointmentSlot slot, Patient patient) {
         if (slot == null || patient == null) {
             return false;
         }
@@ -86,7 +60,7 @@ public class SimpleAppointmentService implements AppointmentService {
         LocalDateTime startNew = slot.dateTime();
         LocalDateTime endNew = startNew.plus(slot.type().getDuration());
 
-        // Check if doctor has any overlapping appointment slot
+        // Check if doctor has any overlapping appointment slot (strictly single-threaded check)
         for (var entry : slots.entrySet()) {
             var bookedSlot = entry.getKey();
             if (bookedSlot.doctor().doctorId().equals(slot.doctor().doctorId())) {
@@ -102,7 +76,7 @@ public class SimpleAppointmentService implements AppointmentService {
             }
         }
 
-        // Artificial tiny delay to simulate core business logic validation processing and trigger race conditions in concurrent execution
+        // Artificial tiny delay to simulate core business logic validation processing
         try {
             Thread.sleep(5);
         } catch (InterruptedException e) {
@@ -154,7 +128,7 @@ public class SimpleAppointmentService implements AppointmentService {
             LocalTime time = shift.start();
             while (time.isBefore(shift.end())) {
                 LocalDateTime candidateStart = date.atTime(time);
-                
+
                 // Check if it overlaps with any already registered slots
                 boolean isBooked = false;
                 for (var entry : slots.entrySet()) {
@@ -173,7 +147,7 @@ public class SimpleAppointmentService implements AppointmentService {
                 if (!isBooked) {
                     availableSlots.add(candidateStart);
                 }
-                
+
                 // Advance by step size
                 time = time.plusMinutes(stepMinutes);
             }
