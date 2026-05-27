@@ -1,7 +1,9 @@
-package es.brasatech.medpulse.service;
+package es.brasatech.medpulse.service.impl;
 
 import es.brasatech.medpulse.domain.AppointmentSlot;
 import es.brasatech.medpulse.domain.Patient;
+import es.brasatech.medpulse.service.DomainDataService;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -10,12 +12,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.StampedLock;
 
-public class ConcurrentAppointmentService extends SimpleAppointmentService {
+@Service
+public class ConcurrentAppointmentServiceImpl extends SimpleAppointmentServiceImpl {
 
     private static final Map<String, StampedLock> doctorLocks = new ConcurrentHashMap<>();
 
-    public ConcurrentAppointmentService() {
-        super();
+    public ConcurrentAppointmentServiceImpl(DomainDataService domainDataService) {
+        super(domainDataService);
     }
 
     private StampedLock getLockForDoctor(String doctorId) {

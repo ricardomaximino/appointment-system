@@ -1,8 +1,12 @@
 package es.brasatech.medpulse.service;
 
 import es.brasatech.medpulse.domain.*;
+import es.brasatech.medpulse.service.impl.SimpleAppointmentServiceImpl;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -13,10 +17,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+@SpringBootTest
 class AppointmentServiceTest {
 
-    private final SimpleAppointmentService appointmentService = new SimpleAppointmentService();
-    private final DomainDataService domainDataService = DbContext.getContext().getBean(DomainDataService.class);
+    @Autowired
+    @Qualifier("simpleAppointmentServiceImpl")
+    private SimpleAppointmentServiceImpl appointmentService;
+
+    @Autowired
+    private DomainDataService domainDataService;
 
     private Doctor getDoctor(String doctorId) {
         return domainDataService.findDoctorById(doctorId);

@@ -1,6 +1,10 @@
-package es.brasatech.medpulse.service;
+package es.brasatech.medpulse.service.impl;
 
 import es.brasatech.medpulse.domain.*;
+import es.brasatech.medpulse.service.AppointmentService;
+import es.brasatech.medpulse.service.CalendarConsolePrinter;
+import es.brasatech.medpulse.service.DomainDataService;
+import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -10,14 +14,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SimpleAppointmentService implements AppointmentService {
+@Service
+public class SimpleAppointmentServiceImpl implements AppointmentService {
 
-    protected DomainDataService domainDataService;
-    protected AppointmentSlotAvailabilityValidator validator;
+    protected final DomainDataService domainDataService;
+    protected final AppointmentSlotAvailabilityValidator validator;
 
-    public SimpleAppointmentService() {
-        var context = DbContext.getContext();
-        this.domainDataService = context.getBean(DomainDataService.class);
+    public SimpleAppointmentServiceImpl(DomainDataService domainDataService) {
+        this.domainDataService = domainDataService;
         this.validator = new AppointmentSlotAvailabilityValidator(this.domainDataService);
     }
 

@@ -1,11 +1,12 @@
 package es.brasatech.medpulse.service;
 
-import es.brasatech.medpulse.domain.AppointmentSlot;
-import es.brasatech.medpulse.domain.AppointmentType;
-import es.brasatech.medpulse.domain.Doctor;
-import es.brasatech.medpulse.domain.Patient;
+import es.brasatech.medpulse.domain.*;
+import es.brasatech.medpulse.service.impl.ConcurrentAppointmentServiceImpl;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -13,10 +14,15 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-class ConcurrentAppointmentServiceTest {
+@SpringBootTest
+class ConcurrentAppointmentServiceImplTest {
 
-    private final ConcurrentAppointmentService appointmentService = new ConcurrentAppointmentService();
-    private final DomainDataService domainDataService = DbContext.getContext().getBean(DomainDataService.class);
+    @Autowired
+    @Qualifier("concurrentAppointmentServiceImpl")
+    private ConcurrentAppointmentServiceImpl appointmentService;
+
+    @Autowired
+    private DomainDataService domainDataService;
 
     private Doctor getDoctor(String doctorId) {
         return domainDataService.findDoctorById(doctorId);

@@ -1,9 +1,10 @@
-package es.brasatech.medpulse.service;
+package es.brasatech.medpulse.service.impl;
 
 import es.brasatech.medpulse.domain.*;
 import es.brasatech.medpulse.entity.*;
 import es.brasatech.medpulse.mapper.*;
 import es.brasatech.medpulse.repository.*;
+import es.brasatech.medpulse.service.DomainDataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
