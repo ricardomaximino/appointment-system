@@ -192,7 +192,8 @@ public class AppointmentWebControllerIntegrationTest {
                         .param("startTime", "12:00")
                         .param("endTime", "13:00")
                         .param("avoidOverride", "true")
-                        .param("avoidStepOver", "false"))
+                        .param("avoidStepOver", "false")
+                        .param("redirectSource", "calendar"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/calendar"))
                 .andExpect(flash().attributeExists("successMessage"));
@@ -212,7 +213,8 @@ public class AppointmentWebControllerIntegrationTest {
         personalEvent.setStatus("ACTIVE");
         Event createdEvent = createEventUseCase.createEvent(personalEvent);
 
-        mockMvc.perform(post("/personal-events/delete/" + createdEvent.getId()).with(csrf()))
+        mockMvc.perform(post("/personal-events/delete/" + createdEvent.getId()).with(csrf())
+                        .param("redirectSource", "calendar"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/calendar"))
                 .andExpect(flash().attributeExists("successMessage"));

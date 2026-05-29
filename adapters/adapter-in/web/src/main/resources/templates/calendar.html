@@ -211,6 +211,9 @@
                     <li class="nav-item">
                         <a class="nav-link active" href="/calendar"><i class="fa-solid fa-calendar-days me-1"></i>Calendar</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dynamic-calendar"><i class="fa-solid fa-table-cells-large me-1"></i>Dynamic Calendar</a>
+                    </li>
                     <li class="nav-item" sec:authorize="hasRole('ADMIN')">
                         <a class="nav-link" href="/closed-dates"><i class="fa-solid fa-building-circle-xmark me-1"></i>Closed Dates</a>
                     </li>
@@ -274,6 +277,7 @@
                                         <!-- Delete Button for Owner's Personal Events in Merged View -->
                                         <div th:if="${evt.type == 'PERSONAL'}">
                                             <form th:action="@{/personal-events/delete/{id}(id=${evt.id})}" method="POST" class="d-inline m-0" onsubmit="return confirm('Are you sure you want to delete this personal event?');">
+                                                <input type="hidden" name="redirectSource" value="calendar">
                                                 <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0" title="Delete Personal Event" style="line-height: 1;">
                                                     <i class="fa-regular fa-trash-can text-danger"></i>
                                                 </button>
@@ -332,6 +336,7 @@
                                         
                                         <!-- Delete Button for Personal Calendar View -->
                                         <form th:action="@{/personal-events/delete/{id}(id=${evt.id})}" method="POST" class="d-inline m-0" onsubmit="return confirm('Are you sure you want to delete this personal event?');">
+                                            <input type="hidden" name="redirectSource" value="calendar">
                                             <button type="submit" class="btn btn-sm btn-link text-danger p-0 border-0" title="Delete Personal Event" style="line-height: 1;">
                                                 <i class="fa-regular fa-trash-can text-danger"></i>
                                             </button>
@@ -460,6 +465,7 @@
             <p class="text-muted small">Reserve a time block in your personal calendar. When avoidOverride is checked, this block will automatically reject any overlapping professional appointment bookings.</p>
             
             <form th:action="@{/personal-events/create}" method="POST" class="row g-3 align-items-end">
+                <input type="hidden" name="redirectSource" value="calendar">
                 <div class="col-md-3">
                     <label class="form-label fw-bold small">Event Title</label>
                     <input type="text" name="title" class="form-control" placeholder="e.g., Doctor Personal Time" required style="border-radius: 10px;">
